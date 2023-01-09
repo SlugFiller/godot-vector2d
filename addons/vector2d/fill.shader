@@ -70,11 +70,35 @@ int calculate_winding_linear(vec2 start, vec2 end) {
 	if (start.x < 0.0 && end.x < 0.0) {
 		return 0;
 	}
-	if (start.y < 0.0 && end.y <= 0.0) {
+	if (start.y < 0.0 && end.y < 0.0) {
 		return 0;
 	}
-	if (start.y > 0.0 && end.y >= 0.0) {
+	if (start.y > 0.0 && end.y > 0.0) {
 		return 0;
+	}
+	if (start.y == 0.0) {
+		if (start.x < 0.0) {
+			return 0;
+		}
+		if (end.y == 0.0) {
+			return 0;
+		}
+		if (end.y > 0.0) {
+			return 1;
+		}
+		return -1;
+	}
+	if (end.y == 0.0) {
+		if (end.x < 0.0) {
+			return 0;
+		}
+		if (start.y == 0.0) {
+			return 0;
+		}
+		if (start.y < 0.0) {
+			return 1;
+		}
+		return -1;
 	}
 	if (end.y > start.y) {
 		if (start.x*(end.y-start.y) < start.y*(end.x-start.x)) {
@@ -86,10 +110,10 @@ int calculate_winding_linear(vec2 start, vec2 end) {
 			return 0;
 		}
 	}
-	if (start.y > 0.0 || end.y < 0.0) {
-		return -1;
+	if (start.y > 0.0) {
+		return -2;
 	}
-	return 1;
+	return 2;
 }
 
 vec2 readVec(int u, int v) {
@@ -317,7 +341,7 @@ void fragment() {
 		}
 		bool applyFeather = false;
 		float applyFeatherValue = 1.0;
-		if (winding == 0 || (evenOdd && (winding & 1) == 0)) {
+		if (winding == 0 || (evenOdd && (winding & 2) == 0)) {
 			float d = feather;
 			while (true) {
 				if (checkBBoxDistance(node, d)) {
