@@ -881,16 +881,19 @@ func apply_create() -> void:
 
 func reload_snap_settings() -> void:
 	var viewport = get_editor_interface().get_editor_viewport()
-	if !viewport:
+	if !viewport || viewport.get_child_count() < 1:
 		return
 	var editor = viewport.get_child(0)
-	if !editor:
+	if editor.get_child_count() < 1:
 		return
 	var canvas_toolbar = editor.get_child(0)
-	if !canvas_toolbar:
+	if canvas_toolbar.get_child_count() < 1:
 		return
-	var snapbutton = canvas_toolbar.get_child(12)
-	if !snapbutton:
+	var main_actions_toolbar = canvas_toolbar.get_child(0)
+	if main_actions_toolbar.get_child_count() < 14:
+		return
+	var snapbutton = main_actions_toolbar.get_child(12)
+	if !(snapbutton is ToolButton):
 		return
 	snap_on = snapbutton.is_pressed()
 	if !snap_on && !snap_first_time:
@@ -906,7 +909,7 @@ func reload_snap_settings() -> void:
 		snapdialog.connect("confirmed", self, "reload_snap_settings")
 		if !snap_on:
 			return
-	canvas_toolbar.get_child(13).get_child(0).emit_signal("id_pressed", 11)
+	main_actions_toolbar.get_child(13).get_child(0).emit_signal("id_pressed", 11)
 	snapdialog.visible = false
 	var grid_settings = snapdialog.get_child(3).get_child(0)
 	snap_offset = Vector2(grid_settings.get_child(1).value, grid_settings.get_child(2).value)

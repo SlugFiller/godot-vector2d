@@ -673,10 +673,10 @@ func _parse_gradient(xml : XMLParser, element : ParsedElement, radial : bool) ->
 					var m : RegExMatch
 					m = alpha_regex.search(xml.get_named_attribute_value_safe("offset"))
 					if m:
-						offset = float(m.get_string(1))*0.01
+						offset = _extract_percentage(m.get_string(1))
 					m = alpha_regex.search(styles["stop-opacity"])
 					if m:
-						color.a = color.a*float(m.get_string(1))
+						color.a = color.a*_extract_percentage(m.get_string(1))
 					offsets.append(offset)
 					colors.append(color)
 				xml.skip_section()
@@ -938,7 +938,9 @@ func _extract_number(def : String) -> float:
 	for num in num_regex.search_all(def):
 		return float(num.get_string(0))
 	return 0.0
-	
+
+func _extract_percentage(def : String) -> float:
+	return _extract_number(def) if def.find("%") < 0 else _extract_number(def)*0.01
 
 func _parse_style(xml : XMLParser, styles : Dictionary) -> void:
 	var m : RegExMatch
@@ -1017,6 +1019,9 @@ func _apply_style(parent : Node2D, root : Node2D, id_map : Dictionary, styles : 
 				_apply_gradient(elem, id_map[m.get_string(3)], id_map)
 		else:
 			elem.color = _parse_color(styles["fill"])
+			m = alpha_regex.search(styles["fill-opacity"])
+			if m:
+				elem.color.a = elem.color.a*_extract_percentage(m.get_string(1))
 		#TODO: Other properties
 	if styles["stroke"].to_lower() != "none":
 		var elem1 : Node2D = preload("stroke.gd").new()
@@ -1054,6 +1059,9 @@ func _apply_style(parent : Node2D, root : Node2D, id_map : Dictionary, styles : 
 				_apply_gradient(elem2, id_map[m.get_string(3)], id_map)
 		else:
 			elem2.color = _parse_color(styles["stroke"])
+			m = alpha_regex.search(styles["stroke-opacity"])
+			if m:
+				elem2.color.a = elem2.color.a*_extract_percentage(m.get_string(1))
 		#TODO: Other properties
 
 func _apply_gradient(elem : Node2D, gradient : ParsedElement, id_map : Dictionary):
