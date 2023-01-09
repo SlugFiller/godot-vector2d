@@ -881,9 +881,17 @@ func apply_create() -> void:
 
 func reload_snap_settings() -> void:
 	var viewport = get_editor_interface().get_editor_viewport()
+	if !viewport:
+		return
 	var editor = viewport.get_child(0)
+	if !editor:
+		return
 	var canvas_toolbar = editor.get_child(0)
+	if !canvas_toolbar:
+		return
 	var snapbutton = canvas_toolbar.get_child(12)
+	if !snapbutton:
+		return
 	snap_on = snapbutton.is_pressed()
 	if !snap_on && !snap_first_time:
 		return

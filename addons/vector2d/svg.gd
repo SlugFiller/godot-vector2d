@@ -1,14 +1,21 @@
 extends EditorImportPlugin
 
 const SEGMENT_TYPE = preload("source.gd").SEGMENT_TYPE
-const positive_num_pattern : String = "(?:\\+?(?:[0-9]*\\.)?[0-9]+(?:e[+\\-]?[0-9]+)?)"
-const num_pattern : String = "(?:[+\\-]?(?:[0-9]*\\.)?[0-9]+(?:e[+\\-]?[0-9]+)?)"
-const point_pattern : String = "(?:"+num_pattern+"[\\s,]+"+num_pattern+")"
-const quad_pattern : String = "(?:"+num_pattern+"[\\s,]+"+num_pattern+"[\\s,]+"+num_pattern+"[\\s,]+"+num_pattern+")"
-const cube_pattern : String = "(?:"+num_pattern+"[\\s,]+"+num_pattern+"[\\s,]+"+num_pattern+"[\\s,]+"+num_pattern+"[\\s,]+"+num_pattern+"[\\s,]+"+num_pattern+")"
-const arc_pattern : String = "(?:"+positive_num_pattern+"[\\s,]+"+positive_num_pattern+"[\\s,]+"+num_pattern+"[\\s,]+[01][\\s,]*[01][\\s,]+"+num_pattern+"[\\s,]+"+num_pattern+")"
-const path_pattern : String = "(?:(?:[Aa][\\s,]*"+arc_pattern+"(?:[\\s,]+"+arc_pattern+")*)|(?:[Cc][\\s,]*"+cube_pattern+"(?:[\\s,]+"+cube_pattern+")*)|(?:[HVhv][\\s,]*"+num_pattern+"(?:[\\s,]+"+num_pattern+")*)|(?:[LMTlmt][\\s,]*"+point_pattern+"(?:[\\s,]+"+point_pattern+")*)|(?:[QSqs][\\s,]*"+quad_pattern+"(?:[\\s,]+"+quad_pattern+")*)|(?:[Zz]))"
-const transform_pattern : String = "(?:(?:[Mm][Aa][Tt][Rr][Ii][Xx]\\s*\\(\\s*("+num_pattern+")[\\s,]+("+num_pattern+")[\\s,]+("+num_pattern+")[\\s,]+("+num_pattern+")[\\s,]+("+num_pattern+")[\\s,]+("+num_pattern+")\\s*\\))|(?:[Tt][Rr][Aa][Nn][Ss][Ll][Aa][Tt][Ee]\\s*\\(\\s*("+num_pattern+")(?:[\\s,]+("+num_pattern+"))?\\s*\\))|(?:[Ss][Cc][Aa][Ll][Ee]\\s*\\(\\s*("+num_pattern+")(?:[\\s,]+("+num_pattern+"))?\\s*\\))|(?:[Rr][Oo][Tt][Aa][Tt][Ee]\\s*\\(\\s*("+num_pattern+")(?:[\\s,]+("+num_pattern+")(?:[\\s,]+("+num_pattern+"))?)?\\s*\\))|(?:[Rr][Oo][Tt][Aa][Tt][Ee]\\s*\\(\\s*("+num_pattern+")(?:[\\s,]+("+num_pattern+")(?:[\\s,]+("+num_pattern+"))?)?\\s*\\))|(?:[Ss][Kk][Ee][Ww][Xx]\\s*\\(\\s*("+num_pattern+")\\s*\\))|(?:[Ss][Kk][Ee][Ww][Yy]\\s*\\(\\s*("+num_pattern+")\\s*\\)))"
+const positive_num_pattern : String = "(?:\\+?(?:[0-9]*\\.)?[0-9]+(?:e[+\\-]?[0-9]+)?(?![0-9]))"
+const num_pattern : String = "(?:[+\\-]?(?:[0-9]*\\.)?[0-9]+(?:e[+\\-]?[0-9]+)?(?![0-9]))"
+const any_sep : String = ")[^0-9+\\-\\.]*("
+const sep_pattern : String = "(?:[\\s]*(?:[\\s]|(?:,[\\s]*)))"
+const optional_sep_pattern : String = "(?:[\\s]*(?:(?:,[\\s]*)?))"
+const next_num_pattern : String = "(?:(?:[+\\-]|(?:"+sep_pattern+"[+\\-]?))(?:[0-9]*\\.)?[0-9]+(?:e[+\\-]?[0-9]+)?(?![0-9]))"
+const point_pattern : String = "(?:"+num_pattern+next_num_pattern+")"
+const next_point_pattern : String = "(?:"+next_num_pattern+next_num_pattern+")"
+const quad_pattern : String = "(?:"+num_pattern+next_num_pattern+next_num_pattern+next_num_pattern+")"
+const next_quad_pattern : String = "(?:"+next_num_pattern+next_num_pattern+next_num_pattern+next_num_pattern+")"
+const cube_pattern : String = "(?:"+num_pattern+next_num_pattern+next_num_pattern+next_num_pattern+next_num_pattern+next_num_pattern+")"
+const next_cube_pattern : String = "(?:"+next_num_pattern+next_num_pattern+next_num_pattern+next_num_pattern+next_num_pattern+next_num_pattern+")"
+const arc_pattern : String = "(?:"+positive_num_pattern+sep_pattern+positive_num_pattern+next_num_pattern+sep_pattern+"[01]"+optional_sep_pattern+"[01]"+next_num_pattern+next_num_pattern+")"
+const path_pattern : String = "(?:(?:[Aa][\\s]*"+arc_pattern+"(?:"+sep_pattern+arc_pattern+")*)|(?:[Cc][\\s]*"+cube_pattern+"(?:"+next_cube_pattern+")*)|(?:[HVhv][\\s]*"+num_pattern+"(?:"+next_num_pattern+")*)|(?:[LMTlmt][\\s]*"+point_pattern+"(?:"+next_point_pattern+")*)|(?:[QSqs][\\s]*"+quad_pattern+"(?:"+next_quad_pattern+")*)|(?:[Zz]))"
+const transform_pattern : String = "(?:(?:[Mm][Aa][Tt][Rr][Ii][Xx]\\s*\\(\\s*("+num_pattern+")("+next_num_pattern+")("+next_num_pattern+")("+next_num_pattern+")("+next_num_pattern+")("+next_num_pattern+")\\s*\\))|(?:[Tt][Rr][Aa][Nn][Ss][Ll][Aa][Tt][Ee]\\s*\\(\\s*("+num_pattern+")("+next_num_pattern+")?\\s*\\))|(?:[Ss][Cc][Aa][Ll][Ee]\\s*\\(\\s*("+num_pattern+")("+next_num_pattern+")?\\s*\\))|(?:[Rr][Oo][Tt][Aa][Tt][Ee]\\s*\\(\\s*("+num_pattern+")("+next_num_pattern+"("+next_num_pattern+")?)?\\s*\\))|(?:[Rr][Oo][Tt][Aa][Tt][Ee]\\s*\\(\\s*("+num_pattern+")("+next_num_pattern+"("+next_num_pattern+")?)?\\s*\\))|(?:[Ss][Kk][Ee][Ww][Xx]\\s*\\(\\s*("+num_pattern+")\\s*\\))|(?:[Ss][Kk][Ee][Ww][Yy]\\s*\\(\\s*("+num_pattern+")\\s*\\)))"
 const style_pattern : String = "(?:([\\-A-Za-z]+)\\s*\\:\\s*([^;\\s](?:\\s*[^;\\s])*))"
 const linejoin_pattern : String = "(?:"+\
 	"(?:[Aa][Rr][Cc][Ss])|"+\
@@ -352,10 +359,10 @@ func _init():
 	path_regex.compile("^\\s*(?:"+path_pattern+"\\s*)*$")
 	path_split_regex.compile(path_pattern)
 	num_regex.compile("("+num_pattern+")")
-	point_regex.compile("("+num_pattern+")[\\s,]+("+num_pattern+")")
-	quad_regex.compile("("+num_pattern+")[\\s,]+("+num_pattern+")[\\s,]+("+num_pattern+")[\\s,]+("+num_pattern+")")
-	cube_regex.compile("("+num_pattern+")[\\s,]+("+num_pattern+")[\\s,]+("+num_pattern+")[\\s,]+("+num_pattern+")[\\s,]+("+num_pattern+")[\\s,]+("+num_pattern+")")
-	arc_regex.compile("("+positive_num_pattern+")[\\s,]+("+positive_num_pattern+")[\\s,]+("+num_pattern+")[\\s,]+([01])[\\s,]+([01])[\\s,]+("+num_pattern+")[\\s,]+("+num_pattern+")")
+	point_regex.compile("("+num_pattern+any_sep+num_pattern+")")
+	quad_regex.compile("("+num_pattern+any_sep+num_pattern+any_sep+num_pattern+any_sep+num_pattern+")")
+	cube_regex.compile("("+num_pattern+any_sep+num_pattern+any_sep+num_pattern+any_sep+num_pattern+any_sep+num_pattern+any_sep+num_pattern+")")
+	arc_regex.compile("("+positive_num_pattern+any_sep+positive_num_pattern+any_sep+num_pattern+any_sep+"[01]"+any_sep+"[01]"+any_sep+num_pattern+any_sep+num_pattern+")")
 	transform_regex.compile("^\\s*(?:"+transform_pattern+"\\s*)*$")
 	transform_split_regex.compile(transform_pattern)
 	points_regex.compile("^\\s*(?:"+point_pattern+"\\s*)*$")
@@ -544,6 +551,7 @@ func _parse_element(xml : XMLParser, elements : Array, id_map : Dictionary) -> i
 		"radialGradient":
 			return _parse_gradient(xml, element, true)
 		_:
+			element.type = -1
 			xml.skip_section()
 			return OK
 
@@ -902,29 +910,35 @@ func _parse_transform(def : String) -> Transform2D:
 	if transform_regex.search(def):
 		for cmd in transform_split_regex.search_all(def):
 			if cmd.get_string(1):
-				ret *= Transform2D(Vector2(float(cmd.get_string(1)), float(cmd.get_string(2))), Vector2(float(cmd.get_string(3)), float(cmd.get_string(4))), Vector2(float(cmd.get_string(5)), float(cmd.get_string(6))))
+				ret *= Transform2D(Vector2(_extract_number(cmd.get_string(1)), _extract_number(cmd.get_string(2))), Vector2(_extract_number(cmd.get_string(3)), _extract_number(cmd.get_string(4))), Vector2(_extract_number(cmd.get_string(5)), _extract_number(cmd.get_string(6))))
 			elif cmd.get_string(7):
 				if cmd.get_string(8):
-					ret *= Transform2D.IDENTITY.translated(Vector2(float(cmd.get_string(7)), float(cmd.get_string(8))))
+					ret *= Transform2D.IDENTITY.translated(Vector2(_extract_number(cmd.get_string(7)), _extract_number(cmd.get_string(8))))
 				else:
-					ret *= Transform2D.IDENTITY.translated(Vector2(float(cmd.get_string(7)), 0.0))
+					ret *= Transform2D.IDENTITY.translated(Vector2(_extract_number(cmd.get_string(7)), 0.0))
 			elif cmd.get_string(9):
 				if cmd.get_string(10):
-					ret *= Transform2D.IDENTITY.scaled(Vector2(float(cmd.get_string(9)), float(cmd.get_string(10))))
+					ret *= Transform2D.IDENTITY.scaled(Vector2(_extract_number(cmd.get_string(9)), _extract_number(cmd.get_string(10))))
 				else:
-					ret *= Transform2D.IDENTITY.scaled(Vector2(float(cmd.get_string(9)), float(cmd.get_string(9))))
+					ret *= Transform2D.IDENTITY.scaled(Vector2(_extract_number(cmd.get_string(9)), _extract_number(cmd.get_string(9))))
 			elif cmd.get_string(11):
 				if cmd.get_string(13):
-					ret *= Transform2D(float(cmd.get_string(9))*(PI/180.0), Vector2(-float(cmd.get_string(12)), -float(cmd.get_string(13)))).translated(Vector2(float(cmd.get_string(12)), float(cmd.get_string(13))))
+					ret *= Transform2D(_extract_number(cmd.get_string(9))*(PI/180.0), Vector2(-_extract_number(cmd.get_string(12)), -_extract_number(cmd.get_string(13)))).translated(Vector2(_extract_number(cmd.get_string(12)), _extract_number(cmd.get_string(13))))
 				elif cmd.get_string(12):
-					ret *= Transform2D(float(cmd.get_string(9))*(PI/180.0), Vector2(-float(cmd.get_string(12)), 0.0)).translated(Vector2(float(cmd.get_string(12)), 0.0))
+					ret *= Transform2D(_extract_number(cmd.get_string(9))*(PI/180.0), Vector2(-_extract_number(cmd.get_string(12)), 0.0)).translated(Vector2(_extract_number(cmd.get_string(12)), 0.0))
 				else:
-					ret *= Transform2D(float(cmd.get_string(9))*(PI/180.0), Vector2.ZERO)
+					ret *= Transform2D(_extract_number(cmd.get_string(9))*(PI/180.0), Vector2.ZERO)
 			elif cmd.get_string(14):
-				ret *= Transform2D(Vector2.RIGHT, Vector2(tan(float(cmd.get_string(14))*(PI/180.0)), 1.0), Vector2.ZERO)
+				ret *= Transform2D(Vector2.RIGHT, Vector2(tan(_extract_number(cmd.get_string(14))*(PI/180.0)), 1.0), Vector2.ZERO)
 			elif cmd.get_string(15):
-				ret *= Transform2D(Vector2(1.0, tan(float(cmd.get_string(15)))*(PI/180.0)), Vector2.DOWN, Vector2.ZERO)
+				ret *= Transform2D(Vector2(1.0, tan(_extract_number(cmd.get_string(15)))*(PI/180.0)), Vector2.DOWN, Vector2.ZERO)
 	return ret
+
+func _extract_number(def : String) -> float:
+	for num in num_regex.search_all(def):
+		return float(num.get_string(0))
+	return 0.0
+	
 
 func _parse_style(xml : XMLParser, styles : Dictionary) -> void:
 	var m : RegExMatch
