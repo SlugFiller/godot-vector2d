@@ -76,8 +76,15 @@ int calculate_winding_linear(vec2 start, vec2 end) {
 	if (start.y > 0.0 && end.y >= 0.0) {
 		return 0;
 	}
-	if (start.x-start.y*(end.x-start.x)/(end.y-start.y) < 0.0) {
-		return 0;
+	if (end.y > start.y) {
+		if (start.x*(end.y-start.y) < start.y*(end.x-start.x)) {
+			return 0;
+		}
+	}
+	else {
+		if (start.x*(end.y-start.y) > start.y*(end.x-start.x)) {
+			return 0;
+		}
 	}
 	if (start.y > 0.0 || end.y < 0.0) {
 		return -1;
