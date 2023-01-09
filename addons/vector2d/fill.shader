@@ -163,163 +163,25 @@ bool checkBBoxDistance(int v, float max_distance) {
 }
 
 void fragment() {
-	if (textureSize(segments, 0).x < 8) {
-		COLOR.a = 0.0;
-		return;
-	}
-	vec2 stack[1024];
-	int recurse_ptr;
-	int winding = 0;
-	int j;
-	int node = 0;
 	while (true) {
-		if (checkBBoxWinding(node)) {
-			int segment = readIndex(3, node);
-			if (segment > 0) {
-				segment--;
-				float type = texelFetch(segments, ivec2(0, segment), 0).r;
-				if (type < 0.5) {
-					if (type < 0.25) {
-						winding += calculate_winding_linear(readVecProjected(0, segment), readVecProjected(1, segment));
-					}
-					else {
-						vec2 start = readVecProjected(0, segment);
-						vec2 control = readVecProjected(1, segment);
-						vec2 end = readVecProjected(2, segment);
-						recurse_ptr = 0;
-						for (j = 0; j < MAX_LOOP; j++) {
-							int calc_winding = calculate_winding_linear(start, end);
-							int test_winding = calculate_winding_linear(start, control)+calculate_winding_linear(control, end);
-							if (recurse_ptr+3 > MAX_RECURSE || calc_winding == test_winding || distance(start, control)+distance(control, end) < 0.5) {
-								winding += calculate_winding_linear(start, end);
-								if (recurse_ptr < 3) {
-									break;
-								}
-								end = stack[--recurse_ptr];
-								control = stack[--recurse_ptr];
-								start = stack[--recurse_ptr];
-								continue;
-							}
-							vec2 a1 = 0.5*(start+control);
-							vec2 a2 = 0.5*(control+end);
-							vec2 b = 0.5*(a1+a2);
-							stack[recurse_ptr++] = b;
-							stack[recurse_ptr++] = a2;
-							stack[recurse_ptr++] = end;
-							control = a1;
-							end = b;
-						}
-					}
-				}
-				else {
-					if (type < 0.75) {
-						vec2 start = readVecProjected(0, segment);
-						vec2 control1 = readVecProjected(1, segment);
-						vec2 control2 = readVecProjected(2, segment);
-						vec2 end = readVecProjected(3, segment);
-						recurse_ptr = 0;
-						for (j = 0; j < MAX_LOOP; j++) {
-							int calc_winding = calculate_winding_linear(start, end);
-							int wind_s1 = calculate_winding_linear(start, control1);
-							int wind_s2 = calculate_winding_linear(start, control2);
-							int wind_se = calculate_winding_linear(start, end);
-							int wind_12 = calculate_winding_linear(control1, control2);
-							int wind_1e = calculate_winding_linear(control1, end);
-							int wind_2e = calculate_winding_linear(control2, end);
-							if (recurse_ptr+4 > MAX_RECURSE || (wind_s1+wind_s2 == wind_12 && wind_s1+wind_1e == wind_se && wind_s2+wind_2e == wind_se && wind_12+wind_2e == wind_1e) || distance(start, control1)+distance(control1, control2)+distance(control2, end) < 0.5) {
-								winding += calc_winding;
-								if (recurse_ptr < 4) {
-									break;
-								}
-								end = stack[--recurse_ptr];
-								control2 = stack[--recurse_ptr];
-								control1 = stack[--recurse_ptr];
-								start = stack[--recurse_ptr];
-								continue;
-							}
-							vec2 a1 = 0.5*(start+control1);
-							vec2 a2 = 0.5*(control1+control2);
-							vec2 a3 = 0.5*(control2+end);
-							vec2 b1 = 0.5*(a1+a2);
-							vec2 b2 = 0.5*(a2+a3);
-							vec2 c = 0.5*(b1+b2);
-							stack[recurse_ptr++] = c;
-							stack[recurse_ptr++] = b2;
-							stack[recurse_ptr++] = a3;
-							stack[recurse_ptr++] = end;
-							control1 = a1;
-							control2 = b1;
-							end = c;
-						}
-					}
-					else {
-						vec2 start = normalize(readVec(0, segment));
-						vec2 end = normalize(readVec(1, segment));
-						vec2 center = readVecProjected(2, segment);
-						vec2 radius1 = readVecProjectedAffine(3, segment);
-						vec2 radius2 = readVecProjectedAffine(4, segment);
-						vec2 pstart = readVecProjected(5, segment);
-						vec2 pend = readVecProjected(6, segment);
-						bool xfirst = (start.y < end.y)?(start.x < end.x):(start.x > end.x);
-						winding += calculate_winding_linear(pstart, center+start.x*radius1+start.y*radius2);
-						winding += calculate_winding_linear(center+end.x*radius1+end.y*radius2, pend);
-						recurse_ptr = 0;
-						for (j = 0; j < MAX_LOOP; j++) {
-							vec2 mid = xfirst?vec2(end.x, start.y):vec2(start.x, end.y);
-							vec2 p1 = center+start.x*radius1+start.y*radius2;
-							vec2 p2 = center+mid.x*radius1+mid.y*radius2;
-							vec2 p3 = center+end.x*radius1+end.y*radius2;
-							int calc_winding = calculate_winding_linear(p1, p3);
-							int test_winding = calculate_winding_linear(p1, p2)+calculate_winding_linear(p2, p3);
-							if (recurse_ptr+2 > MAX_RECURSE || calc_winding == test_winding || distance(p1, p2)+distance(p2, p3) < 0.5) {
-								winding += calc_winding;
-								if (recurse_ptr < 2) {
-									break;
-								}
-								end = stack[--recurse_ptr];
-								start = stack[--recurse_ptr];
-								continue;
-							}
-							vec2 m = normalize(start+end);
-							stack[recurse_ptr++] = m;
-							stack[recurse_ptr++] = end;
-							end = m;
-						}
-					}
-				}
-			}
-			int child = readIndex(1, node);
-			if (child > 0) {
-				node = child;
-				continue;
-			}
-		}
-		int next = readIndex(2, node);
-		while (next <= 0) {
-			node = readIndex(0, node);
-			if (node <= 0) {
-				break;
-			}
-			next = readIndex(2, node);
-		}
-		if (next <= 0) {
+		if (textureSize(segments, 0).x < 8) {
+			COLOR.a = 0.0;
 			break;
 		}
-		node = next;
-	}
-	bool applyFeather = false;
-	float applyFeatherValue = 1.0;
-	if (winding == 0 || (evenOdd && (winding & 1) == 0)) {
-		float d = feather;
+		vec2 stack[1024];
+		int recurse_ptr;
+		int winding = 0;
+		int j;
+		int node = 0;
 		while (true) {
-			if (checkBBoxDistance(node, d)) {
+			if (checkBBoxWinding(node)) {
 				int segment = readIndex(3, node);
 				if (segment > 0) {
 					segment--;
 					float type = texelFetch(segments, ivec2(0, segment), 0).r;
 					if (type < 0.5) {
 						if (type < 0.25) {
-							d = calculate_distance_linear(readVecProjected(0, segment), readVecProjected(1, segment), d);
+							winding += calculate_winding_linear(readVecProjected(0, segment), readVecProjected(1, segment));
 						}
 						else {
 							vec2 start = readVecProjected(0, segment);
@@ -327,20 +189,10 @@ void fragment() {
 							vec2 end = readVecProjected(2, segment);
 							recurse_ptr = 0;
 							for (j = 0; j < MAX_LOOP; j++) {
-								if ((start.x < -d && control.x < -d && end.x < -d) ||
-									(start.y < -d && control.y < -d && end.y < -d) ||
-									(start.x > d && control.x > d && end.x > d) ||
-									(start.y > d && control.y > d && end.y > d)) {
-									if (recurse_ptr < 3) {
-										break;
-									}
-									end = stack[--recurse_ptr];
-									control = stack[--recurse_ptr];
-									start = stack[--recurse_ptr];
-									continue;
-								}
-								if (recurse_ptr+3 > MAX_RECURSE || (distance(start, control) < 0.5 && distance(control, end) < 0.5)) {
-									d = calculate_distance_linear(start, end, d);
+								int calc_winding = calculate_winding_linear(start, end);
+								int test_winding = calculate_winding_linear(start, control)+calculate_winding_linear(control, end);
+								if (recurse_ptr+3 > MAX_RECURSE || calc_winding == test_winding || distance(start, control)+distance(control, end) < 0.5) {
+									winding += calculate_winding_linear(start, end);
 									if (recurse_ptr < 3) {
 										break;
 									}
@@ -368,21 +220,15 @@ void fragment() {
 							vec2 end = readVecProjected(3, segment);
 							recurse_ptr = 0;
 							for (j = 0; j < MAX_LOOP; j++) {
-								if ((start.x < -d && control1.x < -d && control2.x < -d && end.x < -d) ||
-									(start.y < -d && control1.y < -d && control2.y < -d && end.y < -d) ||
-									(start.x > d && control1.x > d && control2.x > d && end.x > d) ||
-									(start.y > d && control1.y > d && control2.y > d && end.y > d)) {
-									if (recurse_ptr < 4) {
-										break;
-									}
-									end = stack[--recurse_ptr];
-									control2 = stack[--recurse_ptr];
-									control1 = stack[--recurse_ptr];
-									start = stack[--recurse_ptr];
-									continue;
-								}
-								if (recurse_ptr+4 > MAX_RECURSE || (distance(start, control1) < 0.5 && distance(control1, control2) < 0.5 && distance(control2, end) < 0.5)) {
-									d = calculate_distance_linear(start, end, d);
+								int calc_winding = calculate_winding_linear(start, end);
+								int wind_s1 = calculate_winding_linear(start, control1);
+								int wind_s2 = calculate_winding_linear(start, control2);
+								int wind_se = calculate_winding_linear(start, end);
+								int wind_12 = calculate_winding_linear(control1, control2);
+								int wind_1e = calculate_winding_linear(control1, end);
+								int wind_2e = calculate_winding_linear(control2, end);
+								if (recurse_ptr+4 > MAX_RECURSE || (wind_s1+wind_s2 == wind_12 && wind_s1+wind_1e == wind_se && wind_s2+wind_2e == wind_se && wind_12+wind_2e == wind_1e) || distance(start, control1)+distance(control1, control2)+distance(control2, end) < 0.5) {
+									winding += calc_winding;
 									if (recurse_ptr < 4) {
 										break;
 									}
@@ -415,23 +261,19 @@ void fragment() {
 							vec2 radius2 = readVecProjectedAffine(4, segment);
 							vec2 pstart = readVecProjected(5, segment);
 							vec2 pend = readVecProjected(6, segment);
-							d = calculate_distance_linear(pstart, center+start.x*radius1+start.y*radius2, d);
-							d = calculate_distance_linear(center+end.x*radius1+end.y*radius2, pend, d);
+							bool xfirst = (start.y < end.y)?(start.x < end.x):(start.x > end.x);
+							winding += calculate_winding_linear(pstart, center+start.x*radius1+start.y*radius2);
+							winding += calculate_winding_linear(center+end.x*radius1+end.y*radius2, pend);
 							recurse_ptr = 0;
 							for (j = 0; j < MAX_LOOP; j++) {
-								if ((center.x+start.x*radius1.x+start.y*radius2.x < -d && center.x+end.x*radius1.x+start.y*radius2.x < -d && center.x+start.x*radius1.x+end.y*radius2.x < -d && center.x+end.x*radius1.x+end.y*radius2.x < -d) ||
-									(center.y+start.x*radius1.y+start.y*radius2.y < -d && center.y+end.x*radius1.y+start.y*radius2.y < -d && center.y+start.x*radius1.y+end.y*radius2.y < -d && center.y+end.x*radius1.y+end.y*radius2.y < -d) ||
-									(center.x+start.x*radius1.x+start.y*radius2.x > d && center.x+end.x*radius1.x+start.y*radius2.x > d && center.x+start.x*radius1.x+end.y*radius2.x > d && center.x+end.x*radius1.x+end.y*radius2.x > d) ||
-									(center.y+start.x*radius1.y+start.y*radius2.y > d && center.y+end.x*radius1.y+start.y*radius2.y > d && center.y+start.x*radius1.y+end.y*radius2.y > d && center.y+end.x*radius1.y+end.y*radius2.y > d)) {
-									if (recurse_ptr < 2) {
-										break;
-									}
-									end = stack[--recurse_ptr];
-									start = stack[--recurse_ptr];
-									continue;
-								}
-								if (recurse_ptr+2 > MAX_RECURSE || distance(start, end) < 1e-3) {
-									d = calculate_distance_linear(center+start.x*radius1+start.y*radius2, center+end.x*radius1+end.y*radius2, d);
+								vec2 mid = xfirst?vec2(end.x, start.y):vec2(start.x, end.y);
+								vec2 p1 = center+start.x*radius1+start.y*radius2;
+								vec2 p2 = center+mid.x*radius1+mid.y*radius2;
+								vec2 p3 = center+end.x*radius1+end.y*radius2;
+								int calc_winding = calculate_winding_linear(p1, p3);
+								int test_winding = calculate_winding_linear(p1, p2)+calculate_winding_linear(p2, p3);
+								if (recurse_ptr+2 > MAX_RECURSE || calc_winding == test_winding || distance(p1, p2)+distance(p2, p3) < 0.5) {
+									winding += calc_winding;
 									if (recurse_ptr < 2) {
 										break;
 									}
@@ -466,103 +308,264 @@ void fragment() {
 			}
 			node = next;
 		}
-		if (feather > 0.0 && d < feather) {
-			applyFeather = true;
-			applyFeatherValue = 1.0-d/feather;
-		}
-		else {
-			discard;
-			return;
-		}
-	}
-	if (paint_type >= 1 && paint_type <= 6) {
-		float gradpoint = 0.0;
-		if (paint_type >= 1 && paint_type <= 3) {
-			vec2 gp1 = (proj_mat*gradient_transform*vec4(gradient_point1, 0.0, 1.0)).xy-local_coord.xy;
-			vec2 gp2 = (proj_mat*gradient_transform*vec4(gradient_point2, 0.0, 1.0)).xy-local_coord.xy;
-			vec2 gpt = (gradient_point2-gradient_point1);
-			gpt = (proj_mat*gradient_transform*vec4(gradient_point1+vec2(gpt.y, -gpt.x), 0.0, 1.0)).xy-local_coord.xy;
-			gradpoint = -(inverse(mat2(gp2-gp1, gpt-gp1))*gp1).x;
-		}
-		else {
-			vec2 testpoint = (inverse(proj_mat*gradient_transform)*vec4(local_coord, 0.0, 1.0)).xy-gradient_point1;
-			vec2 testshift = gradient_point2-gradient_point1;
-			float dr = gradient_radius2-gradient_radius1;
-			float ts2 = dot(testshift, testshift)-dr*dr;
-			dr = dr*gradient_radius1+dot(testshift, testpoint);
-			if (ts2 > -1e-10 && ts2 < 1e-10) {
-				if (dr > -1e-10 && dr < 1e-10) {
-					discard;
-					return;
+		bool applyFeather = false;
+		float applyFeatherValue = 1.0;
+		if (winding == 0 || (evenOdd && (winding & 1) == 0)) {
+			float d = feather;
+			while (true) {
+				if (checkBBoxDistance(node, d)) {
+					int segment = readIndex(3, node);
+					if (segment > 0) {
+						segment--;
+						float type = texelFetch(segments, ivec2(0, segment), 0).r;
+						if (type < 0.5) {
+							if (type < 0.25) {
+								d = calculate_distance_linear(readVecProjected(0, segment), readVecProjected(1, segment), d);
+							}
+							else {
+								vec2 start = readVecProjected(0, segment);
+								vec2 control = readVecProjected(1, segment);
+								vec2 end = readVecProjected(2, segment);
+								recurse_ptr = 0;
+								for (j = 0; j < MAX_LOOP; j++) {
+									if ((start.x < -d && control.x < -d && end.x < -d) ||
+										(start.y < -d && control.y < -d && end.y < -d) ||
+										(start.x > d && control.x > d && end.x > d) ||
+										(start.y > d && control.y > d && end.y > d)) {
+										if (recurse_ptr < 3) {
+											break;
+										}
+										end = stack[--recurse_ptr];
+										control = stack[--recurse_ptr];
+										start = stack[--recurse_ptr];
+										continue;
+									}
+									if (recurse_ptr+3 > MAX_RECURSE || (distance(start, control) < 0.5 && distance(control, end) < 0.5)) {
+										d = calculate_distance_linear(start, end, d);
+										if (recurse_ptr < 3) {
+											break;
+										}
+										end = stack[--recurse_ptr];
+										control = stack[--recurse_ptr];
+										start = stack[--recurse_ptr];
+										continue;
+									}
+									vec2 a1 = 0.5*(start+control);
+									vec2 a2 = 0.5*(control+end);
+									vec2 b = 0.5*(a1+a2);
+									stack[recurse_ptr++] = b;
+									stack[recurse_ptr++] = a2;
+									stack[recurse_ptr++] = end;
+									control = a1;
+									end = b;
+								}
+							}
+						}
+						else {
+							if (type < 0.75) {
+								vec2 start = readVecProjected(0, segment);
+								vec2 control1 = readVecProjected(1, segment);
+								vec2 control2 = readVecProjected(2, segment);
+								vec2 end = readVecProjected(3, segment);
+								recurse_ptr = 0;
+								for (j = 0; j < MAX_LOOP; j++) {
+									if ((start.x < -d && control1.x < -d && control2.x < -d && end.x < -d) ||
+										(start.y < -d && control1.y < -d && control2.y < -d && end.y < -d) ||
+										(start.x > d && control1.x > d && control2.x > d && end.x > d) ||
+										(start.y > d && control1.y > d && control2.y > d && end.y > d)) {
+										if (recurse_ptr < 4) {
+											break;
+										}
+										end = stack[--recurse_ptr];
+										control2 = stack[--recurse_ptr];
+										control1 = stack[--recurse_ptr];
+										start = stack[--recurse_ptr];
+										continue;
+									}
+									if (recurse_ptr+4 > MAX_RECURSE || (distance(start, control1) < 0.5 && distance(control1, control2) < 0.5 && distance(control2, end) < 0.5)) {
+										d = calculate_distance_linear(start, end, d);
+										if (recurse_ptr < 4) {
+											break;
+										}
+										end = stack[--recurse_ptr];
+										control2 = stack[--recurse_ptr];
+										control1 = stack[--recurse_ptr];
+										start = stack[--recurse_ptr];
+										continue;
+									}
+									vec2 a1 = 0.5*(start+control1);
+									vec2 a2 = 0.5*(control1+control2);
+									vec2 a3 = 0.5*(control2+end);
+									vec2 b1 = 0.5*(a1+a2);
+									vec2 b2 = 0.5*(a2+a3);
+									vec2 c = 0.5*(b1+b2);
+									stack[recurse_ptr++] = c;
+									stack[recurse_ptr++] = b2;
+									stack[recurse_ptr++] = a3;
+									stack[recurse_ptr++] = end;
+									control1 = a1;
+									control2 = b1;
+									end = c;
+								}
+							}
+							else {
+								vec2 start = normalize(readVec(0, segment));
+								vec2 end = normalize(readVec(1, segment));
+								vec2 center = readVecProjected(2, segment);
+								vec2 radius1 = readVecProjectedAffine(3, segment);
+								vec2 radius2 = readVecProjectedAffine(4, segment);
+								vec2 pstart = readVecProjected(5, segment);
+								vec2 pend = readVecProjected(6, segment);
+								d = calculate_distance_linear(pstart, center+start.x*radius1+start.y*radius2, d);
+								d = calculate_distance_linear(center+end.x*radius1+end.y*radius2, pend, d);
+								recurse_ptr = 0;
+								for (j = 0; j < MAX_LOOP; j++) {
+									if ((center.x+start.x*radius1.x+start.y*radius2.x < -d && center.x+end.x*radius1.x+start.y*radius2.x < -d && center.x+start.x*radius1.x+end.y*radius2.x < -d && center.x+end.x*radius1.x+end.y*radius2.x < -d) ||
+										(center.y+start.x*radius1.y+start.y*radius2.y < -d && center.y+end.x*radius1.y+start.y*radius2.y < -d && center.y+start.x*radius1.y+end.y*radius2.y < -d && center.y+end.x*radius1.y+end.y*radius2.y < -d) ||
+										(center.x+start.x*radius1.x+start.y*radius2.x > d && center.x+end.x*radius1.x+start.y*radius2.x > d && center.x+start.x*radius1.x+end.y*radius2.x > d && center.x+end.x*radius1.x+end.y*radius2.x > d) ||
+										(center.y+start.x*radius1.y+start.y*radius2.y > d && center.y+end.x*radius1.y+start.y*radius2.y > d && center.y+start.x*radius1.y+end.y*radius2.y > d && center.y+end.x*radius1.y+end.y*radius2.y > d)) {
+										if (recurse_ptr < 2) {
+											break;
+										}
+										end = stack[--recurse_ptr];
+										start = stack[--recurse_ptr];
+										continue;
+									}
+									if (recurse_ptr+2 > MAX_RECURSE || distance(start, end) < 1e-3) {
+										d = calculate_distance_linear(center+start.x*radius1+start.y*radius2, center+end.x*radius1+end.y*radius2, d);
+										if (recurse_ptr < 2) {
+											break;
+										}
+										end = stack[--recurse_ptr];
+										start = stack[--recurse_ptr];
+										continue;
+									}
+									vec2 m = normalize(start+end);
+									stack[recurse_ptr++] = m;
+									stack[recurse_ptr++] = end;
+									end = m;
+								}
+							}
+						}
+					}
+					int child = readIndex(1, node);
+					if (child > 0) {
+						node = child;
+						continue;
+					}
 				}
-				gradpoint = 0.5*(dot(testpoint, testpoint)-gradient_radius1*gradient_radius1)/dr;
+				int next = readIndex(2, node);
+				while (next <= 0) {
+					node = readIndex(0, node);
+					if (node <= 0) {
+						break;
+					}
+					next = readIndex(2, node);
+				}
+				if (next <= 0) {
+					break;
+				}
+				node = next;
+			}
+			if (feather > 0.0 && d < feather) {
+				applyFeather = true;
+				applyFeatherValue = 1.0-d/feather;
 			}
 			else {
-				float tp2 = (dot(testpoint, testpoint)-gradient_radius1*gradient_radius1)/ts2;
-				dr /= ts2;
-				if (dr*dr < tp2) {
-					discard;
-					return;
-				}
-				else {
-					tp2 = sqrt(dr*dr-tp2);
-					if (gradient_radius1 >= (gradient_radius1-gradient_radius2)*(dr-tp2)) {
-						gradpoint = dr-tp2;
-					}
-					else if (gradient_radius1 >= (gradient_radius1-gradient_radius2)*(dr+tp2)) {
-						gradpoint = dr+tp2;
-					}
-					else {
-						discard;
-						return;
-					}
-				}
-			}
-		}
-		if (gradpoint < 0.0) {
-			if (paint_type == 1 || paint_type == 4) {
-				gradpoint = 0.0;
-			}
-			else if (paint_type == 3 || paint_type == 6) {
-				gradpoint = -gradpoint;
-			}
-			else {
-				gradpoint = 1.0-fract(-gradpoint);
-			}
-		}
-		if (gradpoint > 1.0) {
-			if (paint_type == 1 || paint_type == 4) {
-				gradpoint = 1.0;
-			}
-			else if (paint_type == 3 || paint_type == 6) {
-				gradpoint = 2.0*fract(0.5*gradpoint);
-				if (gradpoint > 1.0) {
-					gradpoint = 2.0-gradpoint;
-				}
-			}
-			else {
-				gradpoint = fract(gradpoint);
-			}
-		}
-		COLOR.r = gradpoint;
-		COLOR.g = gradpoint;
-		COLOR.b = gradpoint;
-		int stopCount = textureSize(gradient_stops, 0).x;
-		float lastPoint = 0.0;
-		for (j = 0; j < stopCount; j++) {
-			vec4 t = texelFetch(gradient_stops, ivec2(j, 0), 0);
-			if (gradpoint < t.r) {
-				gradpoint = ((gradpoint-lastPoint)/(t.r-lastPoint)+float(j))/float(stopCount);
+				discard;
 				break;
 			}
-			lastPoint = t.r;
 		}
-		if (j >= stopCount) {
-			gradpoint = 1.0;
+		if (paint_type >= 1 && paint_type <= 6) {
+			float gradpoint = 0.0;
+			if (paint_type >= 1 && paint_type <= 3) {
+				vec2 gp1 = (proj_mat*gradient_transform*vec4(gradient_point1, 0.0, 1.0)).xy-local_coord.xy;
+				vec2 gp2 = (proj_mat*gradient_transform*vec4(gradient_point2, 0.0, 1.0)).xy-local_coord.xy;
+				vec2 gpt = (gradient_point2-gradient_point1);
+				gpt = (proj_mat*gradient_transform*vec4(gradient_point1+vec2(gpt.y, -gpt.x), 0.0, 1.0)).xy-local_coord.xy;
+				gradpoint = -(inverse(mat2(gp2-gp1, gpt-gp1))*gp1).x;
+			}
+			else {
+				vec2 testpoint = (inverse(proj_mat*gradient_transform)*vec4(local_coord, 0.0, 1.0)).xy-gradient_point1;
+				vec2 testshift = gradient_point2-gradient_point1;
+				float dr = gradient_radius2-gradient_radius1;
+				float ts2 = dot(testshift, testshift)-dr*dr;
+				dr = dr*gradient_radius1+dot(testshift, testpoint);
+				if (ts2 > -1e-10 && ts2 < 1e-10) {
+					if (dr > -1e-10 && dr < 1e-10) {
+						discard;
+						break;
+					}
+					gradpoint = 0.5*(dot(testpoint, testpoint)-gradient_radius1*gradient_radius1)/dr;
+				}
+				else {
+					float tp2 = (dot(testpoint, testpoint)-gradient_radius1*gradient_radius1)/ts2;
+					dr /= ts2;
+					if (dr*dr < tp2) {
+						discard;
+						break;
+					}
+					else {
+						tp2 = sqrt(dr*dr-tp2);
+						if (gradient_radius1 >= (gradient_radius1-gradient_radius2)*(dr-tp2)) {
+							gradpoint = dr-tp2;
+						}
+						else if (gradient_radius1 >= (gradient_radius1-gradient_radius2)*(dr+tp2)) {
+							gradpoint = dr+tp2;
+						}
+						else {
+							discard;
+							break;
+						}
+					}
+				}
+			}
+			if (gradpoint < 0.0) {
+				if (paint_type == 1 || paint_type == 4) {
+					gradpoint = 0.0;
+				}
+				else if (paint_type == 3 || paint_type == 6) {
+					gradpoint = -gradpoint;
+				}
+				else {
+					gradpoint = 1.0-fract(-gradpoint);
+				}
+			}
+			if (gradpoint > 1.0) {
+				if (paint_type == 1 || paint_type == 4) {
+					gradpoint = 1.0;
+				}
+				else if (paint_type == 3 || paint_type == 6) {
+					gradpoint = 2.0*fract(0.5*gradpoint);
+					if (gradpoint > 1.0) {
+						gradpoint = 2.0-gradpoint;
+					}
+				}
+				else {
+					gradpoint = fract(gradpoint);
+				}
+			}
+			COLOR.r = gradpoint;
+			COLOR.g = gradpoint;
+			COLOR.b = gradpoint;
+			int stopCount = textureSize(gradient_stops, 0).x;
+			float lastPoint = 0.0;
+			for (j = 0; j < stopCount; j++) {
+				vec4 t = texelFetch(gradient_stops, ivec2(j, 0), 0);
+				if (gradpoint < t.r) {
+					gradpoint = ((gradpoint-lastPoint)/(t.r-lastPoint)+float(j))/float(stopCount);
+					break;
+				}
+				lastPoint = t.r;
+			}
+			if (j >= stopCount) {
+				gradpoint = 1.0;
+			}
+			COLOR = texture(gradient_colors, vec2(gradpoint, 0.5));
 		}
-		COLOR = texture(gradient_colors, vec2(gradpoint, 0.5));
-	}
-	if (applyFeather) {
-		COLOR.a *= applyFeatherValue;
+		if (applyFeather) {
+			COLOR.a *= applyFeatherValue;
+		}
+		break;
 	}
 }
