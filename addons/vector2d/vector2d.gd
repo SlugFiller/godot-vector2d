@@ -1,7 +1,7 @@
-tool
+@tool
 extends EditorPlugin
 
-const SEGMENT_TYPE = preload("source.gd").SEGMENT_TYPE
+const SEGMENT_TYPE = Vector2DShapeSource.SEGMENT_TYPE
 const COLOR_CONTROL_POINT = Color(0, 0.5, 1)
 const COLOR_INTERSECTION_POINT = Color(1, 1, 1)
 const COLOR_CREATE_POINT = Color(0, 1, 0)
@@ -18,7 +18,7 @@ const HOVER_RANGE = 5
 const HOVER_MAX_TRAVEL = 5.0
 const CLICK_MAX_TRAVEL = 5.0
 const INTERPOLATE_PERCISION = 0.5
-var toolbar : HBoxContainer = null 
+var toolbar : HBoxContainer = null
 var editing : Object = null
 var editing_readonly : bool = true
 var selection : Dictionary = {}
@@ -46,71 +46,70 @@ var button_arc : Button
 var button_delete : Button
 var mode : int = 0
 var importer : EditorImportPlugin
-var shortcut_start : ShortCut
 
 func _enter_tree() -> void:
 	importer = preload("res://addons/vector2d/svg.gd").new()
-	add_custom_type("Vector2DShape", "Node2D", preload("shape.gd"), preload("vector2d.svg"))
-	add_custom_type("Vector2DFill", "Node2D", preload("fill.gd"), preload("vector2d.svg"))
-	add_custom_type("Vector2DStroke", "Node2D", preload("stroke.gd"), preload("vector2d.svg"))
+	add_custom_type("Vector2DShape", "Node2D", Vector2DShape, preload("vector2d.svg"))
+	add_custom_type("Vector2DFill", "Node2D", Vector2DFill, preload("vector2d.svg"))
+	add_custom_type("Vector2DStroke", "Node2D", Vector2DStroke, preload("vector2d.svg"))
 	add_import_plugin(importer)
 	toolbar = HBoxContainer.new()
 	toolbar.add_child(VSeparator.new())
 	button_select = Button.new()
 	button_select.focus_mode = Control.FOCUS_NONE
-	button_select.hint_tooltip = "Select object";
+	button_select.tooltip_text = "Select object";
 	button_select.icon = preload("btn_select.svg")
 	button_select.toggle_mode = true
 	button_select.flat = true
-	button_select.connect("pressed", self, "set_mode", [0])
+	button_select.pressed.connect(Callable(self, "set_mode").bind(0))
 	toolbar.add_child(button_select)
 	button_start = Button.new()
 	button_start.focus_mode = Control.FOCUS_NONE
-	button_start.hint_tooltip = "Start new path";
+	button_start.tooltip_text = "Start new path";
 	button_start.icon = preload("btn_start.svg")
 	button_start.toggle_mode = true
 	button_start.flat = true
-	button_start.connect("pressed", self, "set_mode", [1])
+	button_start.pressed.connect(Callable(self, "set_mode").bind(1))
 	toolbar.add_child(button_start)
 	button_line = Button.new()
 	button_line.focus_mode = Control.FOCUS_NONE
-	button_line.hint_tooltip = "Continue path with line";
+	button_line.tooltip_text = "Continue path with line";
 	button_line.icon = preload("btn_line.svg")
 	button_line.toggle_mode = true
 	button_line.flat = true
-	button_line.connect("pressed", self, "set_mode", [2])
+	button_line.pressed.connect(Callable(self, "set_mode").bind(2))
 	toolbar.add_child(button_line)
 	button_quad = Button.new()
 	button_quad.focus_mode = Control.FOCUS_NONE
-	button_quad.hint_tooltip = "Continue path with quadric curve";
+	button_quad.tooltip_text = "Continue path with quadric curve";
 	button_quad.icon = preload("btn_quad.svg")
 	button_quad.toggle_mode = true
 	button_quad.flat = true
-	button_quad.connect("pressed", self, "set_mode", [3])
+	button_quad.pressed.connect(Callable(self, "set_mode").bind(3))
 	toolbar.add_child(button_quad)
 	button_cube = Button.new()
 	button_cube.focus_mode = Control.FOCUS_NONE
-	button_cube.hint_tooltip = "Continue path with cubic curve";
+	button_cube.tooltip_text = "Continue path with cubic curve";
 	button_cube.icon = preload("btn_cube.svg")
 	button_cube.toggle_mode = true
 	button_cube.flat = true
-	button_cube.connect("pressed", self, "set_mode", [4])
+	button_cube.pressed.connect(Callable(self, "set_mode").bind(4))
 	toolbar.add_child(button_cube)
 	button_arc = Button.new()
 	button_arc.focus_mode = Control.FOCUS_NONE
-	button_arc.hint_tooltip = "Continue path with arc";
+	button_arc.tooltip_text = "Continue path with arc";
 	button_arc.icon = preload("btn_arc.svg")
 	button_arc.toggle_mode = true
 	button_arc.flat = true
-	button_arc.connect("pressed", self, "set_mode", [5])
+	button_arc.pressed.connect(Callable(self, "set_mode").bind(5))
 	toolbar.add_child(button_arc)
 	button_delete = Button.new()
 	button_delete.focus_mode = Control.FOCUS_NONE
-	button_delete.hint_tooltip = "Delete selected segments";
+	button_delete.tooltip_text = "Delete selected segments";
 	button_delete.icon = preload("btn_delete.svg")
 	button_delete.toggle_mode = false
 	button_delete.flat = true
-	button_delete.connect("pressed", self, "delete_selected")
+	button_delete.pressed.connect(Callable(self, "delete_selected"))
 	toolbar.add_child(button_delete)
 	toolbar.visible = false
 	set_mode(0)
@@ -127,18 +126,18 @@ func _exit_tree() -> void:
 	remove_custom_type("Vector2DShape")
 	remove_custom_type("Vector2DFill")
 
-func handles(object : Object) -> bool:
-	if object is preload("source.gd"):
+func _handles(object: Object) -> bool:
+	if object is Vector2DShapeSource:
 		return true
 	return false
 
-func edit(object : Object) -> void:
+func _edit(object: Object) -> void:
 	if !is_instance_valid(editing) || !editing.is_inside_tree():
 		editing = null
-	if editing && editing.is_connected("visibility_changed", self, "_node_changed"):
-		editing.disconnect("visibility_changed", self, "_node_changed")
-	if editing && editing.is_connected("shape_changed", self, "_node_changed"):
-		editing.disconnect("shape_changed", self, "_node_changed")
+	if editing && editing.visibility_changed.is_connected(Callable(self, "_node_changed")):
+		editing.visibility_changed.disconnect(Callable(self, "_node_changed"))
+	if editing && editing.shape_changed.is_connected(Callable(self, "_node_changed")):
+		editing.shape_changed.disconnect(Callable(self, "_node_changed"))
 	selection = {}
 	hover_index = 0
 	hover_type = 0
@@ -146,25 +145,26 @@ func edit(object : Object) -> void:
 	click_drag = Vector2()
 	click_create = Vector2()
 	editing = object
-	editing_readonly = !editing || !(editing is preload("shape.gd"))
-	if editing && !editing.is_connected("visibility_changed", self, "_node_changed"):
-		editing.connect("visibility_changed", self, "_node_changed")
-	if editing && !editing.is_connected("shape_changed", self, "_node_changed"):
-		editing.connect("shape_changed", self, "_node_changed")
+	editing_readonly = !editing || !(editing is Vector2DShape)
+	if editing && !editing.visibility_changed.is_connected(Callable(self, "_node_changed")):
+		editing.visibility_changed.connect(Callable(self, "_node_changed"))
+	if editing && !editing.shape_changed.is_connected(Callable(self, "_node_changed")):
+		editing.shape_changed.connect(Callable(self, "_node_changed"))
 	reload_snap_settings()
 	update_buttons()
+	update_overlays()
 
-func make_visible(visible : bool) -> void:
+func _make_visible(visible: bool) -> void:
 	if toolbar:
 		toolbar.visible = visible
 	if visible:
 		get_editor_interface().set_main_screen_editor("2D")
-		update_viewport()
+		update_overlays()
 
-func forward_canvas_gui_input(event : InputEvent) -> bool:
+func _forward_canvas_gui_input(event: InputEvent) -> bool:
 	if editing && (!is_instance_valid(editing) || !editing.is_inside_tree()):
 		editing = null
-		update_viewport()
+		update_overlays()
 		update_buttons()
 	if !editing:
 		return false
@@ -183,7 +183,7 @@ func forward_canvas_gui_input(event : InputEvent) -> bool:
 			else:
 				click_drag = point-click_point
 				snap_drag()
-			update_viewport()
+			update_overlays()
 			return true
 		if is_point_in_range(segments, point, canvas, hover_index, hover_type):
 			hover_travel += (point-hover_last_point).length()
@@ -204,7 +204,7 @@ func forward_canvas_gui_input(event : InputEvent) -> bool:
 			if is_point_in_range(segments, point, canvas, cur_index, cur_type):
 				hover_index = cur_index
 				hover_type = cur_type
-				update_viewport()
+				update_overlays()
 				return false
 		cur_index = 0
 		cur_type = 0
@@ -218,12 +218,12 @@ func forward_canvas_gui_input(event : InputEvent) -> bool:
 			if is_point_in_range(segments, point, canvas, cur_index, cur_type):
 				hover_index = cur_index
 				hover_type = cur_type
-				update_viewport()
+				update_overlays()
 				return false
 		if hover_type != 0 && !is_point_in_range(segments, point, canvas, hover_index, hover_type):
 			hover_index = 0
 			hover_type = 0
-			update_viewport()
+			update_overlays()
 		return false
 	if !editing_readonly && event is InputEventMouseButton:
 		var point : Vector2 = (event as InputEventMouseButton).position
@@ -232,7 +232,7 @@ func forward_canvas_gui_input(event : InputEvent) -> bool:
 		hover_travel = 0.0
 		hover_last_point = point
 		if (event as InputEventMouseButton).is_pressed():
-			update_viewport()
+			update_overlays()
 			click_point = point
 			click_drag = Vector2()
 			click_dragging = false
@@ -265,14 +265,14 @@ func forward_canvas_gui_input(event : InputEvent) -> bool:
 				click_release_type = 0
 				return false
 			if !click_index in selection || !(click_type-1) in selection[click_index]:
-				if !(event as InputEventMouseButton).shift:
+				if !(event as InputEventMouseButton).shift_pressed:
 					selection = {}
 				if !click_index in selection:
 					selection[click_index] = {}
 				selection[click_index][click_type-1] = true
 				click_release_type = 3
 			else:
-				click_release_type = 2 if (event as InputEventMouseButton).shift else 1
+				click_release_type = 2 if (event as InputEventMouseButton).shift_pressed else 1
 			update_buttons()
 			return true
 		else:
@@ -284,11 +284,11 @@ func forward_canvas_gui_input(event : InputEvent) -> bool:
 						if !click_index in selection:
 							selection[click_index] = {}
 						selection[click_index][click_type-1] = true
-						update_viewport()
+						update_overlays()
 					2:
 						if click_index in selection && (click_type-1) in selection[click_index]:
 							selection[click_index].erase(click_type-1)
-						update_viewport()
+						update_overlays()
 			elif click_release_type == 4:
 				click_dragging = false
 				click_create = point
@@ -304,7 +304,7 @@ func forward_canvas_gui_input(event : InputEvent) -> bool:
 			click_type = 0
 			click_drag = Vector2()
 			click_create = Vector2()
-			update_viewport()
+			update_overlays()
 			update_buttons()
 			return ret
 	return false
@@ -338,10 +338,10 @@ func try_optimize_polyline(overlay : Control, edscale : float, line : Array, rec
 	if line.size() > 1:
 		var offset : int = 0
 		while line.size() > offset+8192:
-			overlay.draw_polyline(PoolVector2Array(line.slice(offset, offset+8191)), COLOR_LINE, WIDTH_LINE, true)
+			overlay.draw_polyline(PackedVector2Array(line.slice(offset, offset+8192)), COLOR_LINE, WIDTH_LINE, true)
 			offset += 8192
 		if line.size() > offset+1:
-			overlay.draw_polyline(PoolVector2Array(line.slice(offset, line.size()-1)), COLOR_LINE, WIDTH_LINE, true)
+			overlay.draw_polyline(PackedVector2Array(line.slice(offset, line.size())), COLOR_LINE, WIDTH_LINE, true)
 	line.resize(0)
 	return true
 
@@ -376,7 +376,7 @@ func interpolate_arc(overlay : Control, edscale : float, line : Array, rect : Re
 	interpolate_arc(overlay, edscale, line, rect, start, c, r1, r2, m)
 	interpolate_arc(overlay, edscale, line, rect, m, c, r1, r2, end)
 
-func forward_canvas_draw_over_viewport(overlay : Control) -> void:
+func _forward_canvas_draw_over_viewport(viewport_control: Control) -> void:
 	if editing && (!is_instance_valid(editing) || !editing.is_inside_tree()):
 		editing = null
 		update_buttons()
@@ -394,7 +394,7 @@ func forward_canvas_draw_over_viewport(overlay : Control) -> void:
 		var point_selected : bool = false
 		match segment[0]:
 			SEGMENT_TYPE.START:
-				var pos : Vector2 = canvas.xform(segment[1])
+				var pos : Vector2 = canvas*(segment[1])
 				if index in selection && 0 in selection[index]:
 					pos += click_drag
 					point_selected = true
@@ -403,9 +403,9 @@ func forward_canvas_draw_over_viewport(overlay : Control) -> void:
 				should_close = false
 				if line.size() > 1:
 					while line.size() > 8192:
-						overlay.draw_polyline(PoolVector2Array(line.slice(0, 8191)), COLOR_LINE, WIDTH_LINE, true)
-						line = line.slice(8192, line.size()-1)
-					overlay.draw_polyline(PoolVector2Array(line), COLOR_LINE, WIDTH_LINE, true)
+						viewport_control.draw_polyline(PackedVector2Array(line.slice(0, 8192)), COLOR_LINE, WIDTH_LINE, true)
+						line = line.slice(8192, line.size())
+					viewport_control.draw_polyline(PackedVector2Array(line), COLOR_LINE, WIDTH_LINE, true)
 				line.resize(0)
 				line.append(pos)
 				position = pos
@@ -413,27 +413,27 @@ func forward_canvas_draw_over_viewport(overlay : Control) -> void:
 				if segment[2] & 1:
 					should_close = true
 			SEGMENT_TYPE.LINEAR:
-				var pos : Vector2 = canvas.xform(segment[1])
+				var pos : Vector2 = canvas*(segment[1])
 				if index in selection && 0 in selection[index]:
 					pos += click_drag
 					point_selected = true
-				try_optimize_polyline(overlay, edscale, line, canvas_rect, [pos])
+				try_optimize_polyline(viewport_control, edscale, line, canvas_rect, [pos])
 				line.append(pos)
 				position = pos
 			SEGMENT_TYPE.QUADRIC:
-				var c : Vector2 = canvas.xform(segment[1])
-				var pos : Vector2 = canvas.xform(segment[2])
+				var c : Vector2 = canvas*(segment[1])
+				var pos : Vector2 = canvas*(segment[2])
 				if index in selection && 0 in selection[index]:
 					c += click_drag
 				if index in selection && 1 in selection[index]:
 					pos += click_drag
 					point_selected = true
-				interpolate_quadric(overlay, edscale, line, canvas_rect, position, c, pos)
+				interpolate_quadric(viewport_control, edscale, line, canvas_rect, position, c, pos)
 				position = pos
 			SEGMENT_TYPE.CUBIC:
-				var c1 : Vector2 = canvas.xform(segment[1])
-				var c2 : Vector2 = canvas.xform(segment[2])
-				var pos : Vector2 = canvas.xform(segment[3])
+				var c1 : Vector2 = canvas*(segment[1])
+				var c2 : Vector2 = canvas*(segment[2])
+				var pos : Vector2 = canvas*(segment[3])
 				if index in selection && 0 in selection[index]:
 					c1 += click_drag
 				if index in selection && 1 in selection[index]:
@@ -441,15 +441,15 @@ func forward_canvas_draw_over_viewport(overlay : Control) -> void:
 				if index in selection && 2 in selection[index]:
 					pos += click_drag
 					point_selected = true
-				interpolate_cubic(overlay, edscale, line, canvas_rect, position, c1, c2, pos)
+				interpolate_cubic(viewport_control, edscale, line, canvas_rect, position, c1, c2, pos)
 				position = pos
 			SEGMENT_TYPE.ARC:
-				var c : Vector2 = canvas.xform(segment[2])
+				var c : Vector2 = canvas*(segment[2])
 				if index in selection && 1 in selection[index]:
 					c += click_drag
-				var r1 : Vector2 = canvas.xform(segment[1])-c
-				var r2 : Vector2 = canvas.xform(segment[3])-c
-				var pos : Vector2 = canvas.xform(segment[4])
+				var r1 : Vector2 = canvas*(segment[1])-c
+				var r2 : Vector2 = canvas*(segment[3])-c
+				var pos : Vector2 = canvas*(segment[4])
 				if index in selection && 0 in selection[index]:
 					r1 += click_drag
 				if index in selection && 2 in selection[index]:
@@ -472,34 +472,34 @@ func forward_canvas_draw_over_viewport(overlay : Control) -> void:
 				while a3 <= a1:
 					a3 += 0.5*PI
 				if a3 < a2:
-					interpolate_arc(overlay, edscale, line, canvas_rect, Vector2(1, 0).rotated(a1), c, r1, r2, Vector2(1, 0).rotated(a3))
+					interpolate_arc(viewport_control, edscale, line, canvas_rect, Vector2(1, 0).rotated(a1), c, r1, r2, Vector2(1, 0).rotated(a3))
 					while a3+0.5*PI < a2:
-						interpolate_arc(overlay, edscale, line, canvas_rect, Vector2(1, 0).rotated(a3), c, r1, r2, Vector2(1, 0).rotated(a3+0.5*PI))
+						interpolate_arc(viewport_control, edscale, line, canvas_rect, Vector2(1, 0).rotated(a3), c, r1, r2, Vector2(1, 0).rotated(a3+0.5*PI))
 						a3 += 0.5*PI
-					interpolate_arc(overlay, edscale, line, canvas_rect, Vector2(1, 0).rotated(a3), c, r1, r2, Vector2(1, 0).rotated(a2))
+					interpolate_arc(viewport_control, edscale, line, canvas_rect, Vector2(1, 0).rotated(a3), c, r1, r2, Vector2(1, 0).rotated(a2))
 				else:
-					interpolate_arc(overlay, edscale, line, canvas_rect, Vector2(1, 0).rotated(a1), c, r1, r2, Vector2(1, 0).rotated(a2))
-				try_optimize_polyline(overlay, edscale, line, canvas_rect, [pos])
+					interpolate_arc(viewport_control, edscale, line, canvas_rect, Vector2(1, 0).rotated(a1), c, r1, r2, Vector2(1, 0).rotated(a2))
+				try_optimize_polyline(viewport_control, edscale, line, canvas_rect, [pos])
 				line.append(pos)
 				position = pos
 		if click_release_type == 4 && point_selected:
 			if mode == 1:
 				if line.size() > 1:
 					while line.size() > 8192:
-						overlay.draw_polyline(PoolVector2Array(line.slice(0, 8191)), COLOR_LINE, WIDTH_LINE, true)
-						line = line.slice(8192, line.size()-1)
-					overlay.draw_polyline(PoolVector2Array(line), COLOR_LINE, WIDTH_LINE, true)
+						viewport_control.draw_polyline(PackedVector2Array(line.slice(0, 8192)), COLOR_LINE, WIDTH_LINE, true)
+						line = line.slice(8192, line.size())
+					viewport_control.draw_polyline(PackedVector2Array(line), COLOR_LINE, WIDTH_LINE, true)
 				line.resize(0)
 				line.append(click_create)
 				position = click_create
 			elif mode == 5:
 				var c = 0.5*(position+click_create)
 				var r = 0.5*(position-click_create)
-				interpolate_arc(overlay, edscale, line, canvas_rect, Vector2(1, 0), c, r, -r.tangent(), Vector2(0, 1))
-				interpolate_arc(overlay, edscale, line, canvas_rect, Vector2(0, 1), c, r, -r.tangent(), Vector2(-1, 0))
+				interpolate_arc(viewport_control, edscale, line, canvas_rect, Vector2(1, 0), c, r, -r.orthogonal(), Vector2(0, 1))
+				interpolate_arc(viewport_control, edscale, line, canvas_rect, Vector2(0, 1), c, r, -r.orthogonal(), Vector2(-1, 0))
 				position = click_create
 			else:
-				try_optimize_polyline(overlay, edscale, line, canvas_rect, [click_create])
+				try_optimize_polyline(viewport_control, edscale, line, canvas_rect, [click_create])
 				line.append(click_create)
 				position = click_create
 		index += 1
@@ -507,149 +507,149 @@ func forward_canvas_draw_over_viewport(overlay : Control) -> void:
 		line.append(start)
 	if line.size() > 1:
 		while line.size() > 8192:
-			overlay.draw_polyline(PoolVector2Array(line.slice(0, 8191)), COLOR_LINE, WIDTH_LINE, true)
-			line = line.slice(8192, line.size()-1)
-		overlay.draw_polyline(PoolVector2Array(line), COLOR_LINE, WIDTH_LINE, true)
+			viewport_control.draw_polyline(PackedVector2Array(line.slice(0, 8192)), COLOR_LINE, WIDTH_LINE, true)
+			line = line.slice(8192, line.size())
+		viewport_control.draw_polyline(PackedVector2Array(line), COLOR_LINE, WIDTH_LINE, true)
 	index = 0
 	for segment in editing.get_shape():
 		var point_selected : bool = false
 		var pos : Vector2
 		match segment[0]:
 			SEGMENT_TYPE.START:
-				pos = canvas.xform(segment[1])
+				pos = canvas*(segment[1])
 				if index in selection && 0 in selection[index]:
 					pos += click_drag
 					point_selected = true
-					overlay.draw_circle(pos, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
+					viewport_control.draw_circle(pos, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
 				else:
-					overlay.draw_circle(pos, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-				overlay.draw_circle(pos, RADIUS_POINT, COLOR_INTERSECTION_POINT)
+					viewport_control.draw_circle(pos, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+				viewport_control.draw_circle(pos, RADIUS_POINT, COLOR_INTERSECTION_POINT)
 				if index == hover_index && 1 == hover_type:
-					overlay.draw_string(overlay.get_font("font", "Label"), pos+HOVER_TEXT_SHIFT, str(index)+" Start", HOVER_COLOR)
+					viewport_control.draw_string(viewport_control.get_theme_font("font", "Label"), pos+HOVER_TEXT_SHIFT, str(index)+" Start", 0, -1, viewport_control.get_theme_font_size("font", "Label"), HOVER_COLOR)
 			SEGMENT_TYPE.LINEAR:
-				pos = canvas.xform(segment[1])
+				pos = canvas*(segment[1])
 				if index in selection && 0 in selection[index]:
 					pos += click_drag
 					point_selected = true
-					overlay.draw_circle(pos, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
+					viewport_control.draw_circle(pos, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
 				else:
-					overlay.draw_circle(pos, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-				overlay.draw_circle(pos, RADIUS_POINT, COLOR_INTERSECTION_POINT)
+					viewport_control.draw_circle(pos, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+				viewport_control.draw_circle(pos, RADIUS_POINT, COLOR_INTERSECTION_POINT)
 				if index == hover_index && 1 == hover_type:
-					overlay.draw_string(overlay.get_font("font", "Label"), pos+HOVER_TEXT_SHIFT, str(index)+" Linear End", HOVER_COLOR)
+					viewport_control.draw_string(viewport_control.get_theme_font("font", "Label"), pos+HOVER_TEXT_SHIFT, str(index)+" Linear End", 0, -1, viewport_control.get_theme_font_size("font", "Label"), HOVER_COLOR)
 			SEGMENT_TYPE.QUADRIC:
-				var c : Vector2 = canvas.xform(segment[1])
-				pos = canvas.xform(segment[2])
+				var c : Vector2 = canvas*(segment[1])
+				pos = canvas*(segment[2])
 				if index in selection && 0 in selection[index]:
 					c += click_drag
-					overlay.draw_circle(c, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
+					viewport_control.draw_circle(c, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
 				else:
-					overlay.draw_circle(c, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-				overlay.draw_circle(c, RADIUS_POINT, COLOR_CONTROL_POINT)
+					viewport_control.draw_circle(c, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+				viewport_control.draw_circle(c, RADIUS_POINT, COLOR_CONTROL_POINT)
 				if index == hover_index && 1 == hover_type:
-					overlay.draw_string(overlay.get_font("font", "Label"), c+HOVER_TEXT_SHIFT, str(index)+" Quadric Control", HOVER_COLOR)
+					viewport_control.draw_string(viewport_control.get_theme_font("font", "Label"), c+HOVER_TEXT_SHIFT, str(index)+" Quadric Control", 0, -1, viewport_control.get_theme_font_size("font", "Label"), HOVER_COLOR)
 				if index in selection && 1 in selection[index]:
 					pos += click_drag
 					point_selected = true
-					overlay.draw_circle(pos, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
+					viewport_control.draw_circle(pos, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
 				else:
-					overlay.draw_circle(pos, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-				overlay.draw_circle(pos, RADIUS_POINT, COLOR_INTERSECTION_POINT)
+					viewport_control.draw_circle(pos, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+				viewport_control.draw_circle(pos, RADIUS_POINT, COLOR_INTERSECTION_POINT)
 				if index == hover_index && 2 == hover_type:
-					overlay.draw_string(overlay.get_font("font", "Label"), pos+HOVER_TEXT_SHIFT, str(index)+" Quadric End", HOVER_COLOR)
+					viewport_control.draw_string(viewport_control.get_theme_font("font", "Label"), pos+HOVER_TEXT_SHIFT, str(index)+" Quadric End", 0, -1, viewport_control.get_theme_font_size("font", "Label"), HOVER_COLOR)
 			SEGMENT_TYPE.CUBIC:
-				var c1 : Vector2 = canvas.xform(segment[1])
-				var c2 : Vector2 = canvas.xform(segment[2])
-				pos = canvas.xform(segment[3])
+				var c1 : Vector2 = canvas*(segment[1])
+				var c2 : Vector2 = canvas*(segment[2])
+				pos = canvas*(segment[3])
 				if index in selection && 0 in selection[index]:
 					c1 += click_drag
-					overlay.draw_circle(c1, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
+					viewport_control.draw_circle(c1, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
 				else:
-					overlay.draw_circle(c1, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-				overlay.draw_circle(c1, RADIUS_POINT, COLOR_CONTROL_POINT)
+					viewport_control.draw_circle(c1, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+				viewport_control.draw_circle(c1, RADIUS_POINT, COLOR_CONTROL_POINT)
 				if index == hover_index && 1 == hover_type:
-					overlay.draw_string(overlay.get_font("font", "Label"), c1+HOVER_TEXT_SHIFT, str(index)+" Cubic Control 1", HOVER_COLOR)
+					viewport_control.draw_string(viewport_control.get_theme_font("font", "Label"), c1+HOVER_TEXT_SHIFT, str(index)+" Cubic Control 1", 0, -1, viewport_control.get_theme_font_size("font", "Label"), HOVER_COLOR)
 				if index in selection && 1 in selection[index]:
 					c2 += click_drag
-					overlay.draw_circle(c2, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
+					viewport_control.draw_circle(c2, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
 				else:
-					overlay.draw_circle(c2, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-				overlay.draw_circle(c2, RADIUS_POINT, COLOR_CONTROL_POINT)
+					viewport_control.draw_circle(c2, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+				viewport_control.draw_circle(c2, RADIUS_POINT, COLOR_CONTROL_POINT)
 				if index == hover_index && 2 == hover_type:
-					overlay.draw_string(overlay.get_font("font", "Label"), c2+HOVER_TEXT_SHIFT, str(index)+" Cubic Control 2", HOVER_COLOR)
+					viewport_control.draw_string(viewport_control.get_theme_font("font", "Label"), c2+HOVER_TEXT_SHIFT, str(index)+" Cubic Control 2", 0, -1, viewport_control.get_theme_font_size("font", "Label"), HOVER_COLOR)
 				if index in selection && 2 in selection[index]:
 					pos += click_drag
 					point_selected = true
-					overlay.draw_circle(pos, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
+					viewport_control.draw_circle(pos, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
 				else:
-					overlay.draw_circle(pos, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-				overlay.draw_circle(pos, RADIUS_POINT, COLOR_INTERSECTION_POINT)
+					viewport_control.draw_circle(pos, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+				viewport_control.draw_circle(pos, RADIUS_POINT, COLOR_INTERSECTION_POINT)
 				if index == hover_index && 3 == hover_type:
-					overlay.draw_string(overlay.get_font("font", "Label"), pos+HOVER_TEXT_SHIFT, str(index)+" Cubic End", HOVER_COLOR)
+					viewport_control.draw_string(viewport_control.get_theme_font("font", "Label"), pos+HOVER_TEXT_SHIFT, str(index)+" Cubic End", 0, -1, viewport_control.get_theme_font_size("font", "Label"), HOVER_COLOR)
 			SEGMENT_TYPE.ARC:
-				var a1 : Vector2 = canvas.xform(segment[1])
-				var c : Vector2 = canvas.xform(segment[2])
-				var a2 : Vector2 = canvas.xform(segment[3])
-				pos = canvas.xform(segment[4])
+				var a1 : Vector2 = canvas*(segment[1])
+				var c : Vector2 = canvas*(segment[2])
+				var a2 : Vector2 = canvas*(segment[3])
+				pos = canvas*(segment[4])
 				if index in selection && 0 in selection[index]:
 					a1 += click_drag
-					overlay.draw_circle(a1, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
+					viewport_control.draw_circle(a1, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
 				else:
-					overlay.draw_circle(a1, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-				overlay.draw_circle(a1, RADIUS_POINT, COLOR_CONTROL_POINT)
+					viewport_control.draw_circle(a1, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+				viewport_control.draw_circle(a1, RADIUS_POINT, COLOR_CONTROL_POINT)
 				if index == hover_index && 1 == hover_type:
-					overlay.draw_string(overlay.get_font("font", "Label"), a1+HOVER_TEXT_SHIFT, str(index)+" Arc Axis 1", HOVER_COLOR)
+					viewport_control.draw_string(viewport_control.get_theme_font("font", "Label"), a1+HOVER_TEXT_SHIFT, str(index)+" Arc Axis 1", 0, -1, viewport_control.get_theme_font_size("font", "Label"), HOVER_COLOR)
 				if index in selection && 1 in selection[index]:
 					c += click_drag
-					overlay.draw_circle(c, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
+					viewport_control.draw_circle(c, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
 				else:
-					overlay.draw_circle(c, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-				overlay.draw_circle(c, RADIUS_POINT, COLOR_CONTROL_POINT)
+					viewport_control.draw_circle(c, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+				viewport_control.draw_circle(c, RADIUS_POINT, COLOR_CONTROL_POINT)
 				if index == hover_index && 2 == hover_type:
-					overlay.draw_string(overlay.get_font("font", "Label"), c+HOVER_TEXT_SHIFT, str(index)+" Arc Center", HOVER_COLOR)
+					viewport_control.draw_string(viewport_control.get_theme_font("font", "Label"), c+HOVER_TEXT_SHIFT, str(index)+" Arc Center", 0, -1, viewport_control.get_theme_font_size("font", "Label"), HOVER_COLOR)
 				if index in selection && 2 in selection[index]:
 					a2 += click_drag
-					overlay.draw_circle(a2, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
+					viewport_control.draw_circle(a2, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
 				else:
-					overlay.draw_circle(a2, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-				overlay.draw_circle(a2, RADIUS_POINT, COLOR_CONTROL_POINT)
+					viewport_control.draw_circle(a2, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+				viewport_control.draw_circle(a2, RADIUS_POINT, COLOR_CONTROL_POINT)
 				if index == hover_index && 3 == hover_type:
-					overlay.draw_string(overlay.get_font("font", "Label"), a2+HOVER_TEXT_SHIFT, str(index)+" Arc Axis 2", HOVER_COLOR)
+					viewport_control.draw_string(viewport_control.get_theme_font("font", "Label"), a2+HOVER_TEXT_SHIFT, str(index)+" Arc Axis 2", 0, -1, viewport_control.get_theme_font_size("font", "Label"), HOVER_COLOR)
 				if index in selection && 3 in selection[index]:
 					pos += click_drag
 					point_selected = true
-					overlay.draw_circle(pos, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
+					viewport_control.draw_circle(pos, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
 				else:
-					overlay.draw_circle(pos, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-				overlay.draw_circle(pos, RADIUS_POINT, COLOR_INTERSECTION_POINT)
+					viewport_control.draw_circle(pos, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+				viewport_control.draw_circle(pos, RADIUS_POINT, COLOR_INTERSECTION_POINT)
 				if index == hover_index && 4 == hover_type:
-					overlay.draw_string(overlay.get_font("font", "Label"), pos+HOVER_TEXT_SHIFT, str(index)+" Arc End", HOVER_COLOR)
+					viewport_control.draw_string(viewport_control.get_theme_font("font", "Label"), pos+HOVER_TEXT_SHIFT, str(index)+" Arc End", 0, -1, viewport_control.get_theme_font_size("font", "Label"), HOVER_COLOR)
 		if click_release_type == 4 && point_selected:
 			match mode:
 				3:
 					var c : Vector2 = 0.5*(pos+click_create)
-					overlay.draw_circle(c, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-					overlay.draw_circle(c, RADIUS_POINT, COLOR_CONTROL_POINT)
+					viewport_control.draw_circle(c, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+					viewport_control.draw_circle(c, RADIUS_POINT, COLOR_CONTROL_POINT)
 				4:
 					var c1 : Vector2 = (2.0/3.0)*pos+(1.0/3.0)*click_create
 					var c2 : Vector2 = (1.0/3.0)*pos+(2.0/3.0)*click_create
-					overlay.draw_circle(c1, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-					overlay.draw_circle(c1, RADIUS_POINT, COLOR_CONTROL_POINT)
-					overlay.draw_circle(c2, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-					overlay.draw_circle(c2, RADIUS_POINT, COLOR_CONTROL_POINT)
+					viewport_control.draw_circle(c1, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+					viewport_control.draw_circle(c1, RADIUS_POINT, COLOR_CONTROL_POINT)
+					viewport_control.draw_circle(c2, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+					viewport_control.draw_circle(c2, RADIUS_POINT, COLOR_CONTROL_POINT)
 				5:
 					var c : Vector2 = 0.5*(pos+click_create)
-					var a : Vector2 = (click_create-pos).tangent()*0.5+c
-					overlay.draw_circle(c, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-					overlay.draw_circle(c, RADIUS_POINT, COLOR_CONTROL_POINT)
-					overlay.draw_circle(a, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-					overlay.draw_circle(a, RADIUS_POINT, COLOR_CONTROL_POINT)
-					overlay.draw_circle(click_create, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
-					overlay.draw_circle(click_create, RADIUS_POINT, COLOR_CONTROL_POINT)
+					var a : Vector2 = (click_create-pos).orthogonal()*0.5+c
+					viewport_control.draw_circle(c, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+					viewport_control.draw_circle(c, RADIUS_POINT, COLOR_CONTROL_POINT)
+					viewport_control.draw_circle(a, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+					viewport_control.draw_circle(a, RADIUS_POINT, COLOR_CONTROL_POINT)
+					viewport_control.draw_circle(click_create, RADIUS_POINT_OUTLINE, COLOR_POINT_OUTLINE)
+					viewport_control.draw_circle(click_create, RADIUS_POINT, COLOR_CONTROL_POINT)
 		index += 1
 	if click_release_type == 4:
-		overlay.draw_circle(click_create, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
-		overlay.draw_circle(click_create, RADIUS_POINT, COLOR_CREATE_POINT)
+		viewport_control.draw_circle(click_create, RADIUS_POINT_OUTLINE_SELECTED, COLOR_POINT_OUTLINE_SELECTED)
+		viewport_control.draw_circle(click_create, RADIUS_POINT, COLOR_CREATE_POINT)
 
 func _node_changed():
 	if !editing:
@@ -657,10 +657,7 @@ func _node_changed():
 	if !is_instance_valid(editing) || !editing.is_inside_tree():
 		editing = null
 		update_buttons()
-	update_viewport()
-
-func update_viewport() -> void:
-	get_editor_interface().get_editor_viewport().get_child(0).update_viewport()
+	update_overlays()
 
 func get_canvas_size() -> Vector2:
 	return get_editor_interface().get_edited_scene_root().get_parent().size
@@ -690,7 +687,7 @@ func is_point_in_range(segments : Array, pos : Vector2, canvas : Transform2D, in
 				return false
 		_:
 			return false
-	return (pos-canvas.xform(segment[type])).length() <= HOVER_RANGE
+	return (pos-canvas*(segment[type])).length() <= HOVER_RANGE
 
 func snap_drag() -> void:
 	if !snap_on:
@@ -698,7 +695,7 @@ func snap_drag() -> void:
 	var segments : Array = editing.get_shape()
 	var canvas := get_canvas_transform()
 	var canvas_base := get_canvas_transform(false)
-	var grid_offset : Vector2 = canvas_base.xform(snap_offset)
+	var grid_offset : Vector2 = canvas_base*(snap_offset)
 	var grid_step : Vector2 = canvas_base.basis_xform(snap_step)
 	var shift := grid_step*2
 	shift = _snap_to_grid(click_drag, Vector2(), grid_step, shift)
@@ -719,10 +716,10 @@ func snap_drag() -> void:
 			if point in selection[i]:
 				point_count += 1
 				center_mass += segments[i][point+1]
-				shift = _snap_to_grid(canvas.xform(segments[i][point+1])+click_drag, grid_offset, grid_step, shift)
+				shift = _snap_to_grid(canvas*(segments[i][point+1])+click_drag, grid_offset, grid_step, shift)
 	if point_count > 0:
 		center_mass /= point_count
-		shift = _snap_to_grid(canvas.xform(center_mass)+click_drag, grid_offset, grid_step, shift)
+		shift = _snap_to_grid(canvas*(center_mass)+click_drag, grid_offset, grid_step, shift)
 	click_drag += shift
 
 func snap_create() -> void:
@@ -731,7 +728,7 @@ func snap_create() -> void:
 	var segments : Array = editing.get_shape()
 	var canvas := get_canvas_transform()
 	var canvas_base := get_canvas_transform(false)
-	var grid_offset : Vector2 = canvas_base.xform(snap_offset)
+	var grid_offset : Vector2 = canvas_base*(snap_offset)
 	var grid_step : Vector2 = canvas_base.basis_xform(snap_step)
 	var shift := grid_step*2
 	shift = _snap_to_grid(click_create, grid_offset, grid_step, shift)
@@ -752,10 +749,10 @@ func snap_create() -> void:
 			if point in selection[i]:
 				point_count += 1
 				center_mass += segments[i][point+1]
-				shift = _snap_to_grid(click_create, canvas.xform(segments[i][point+1]), grid_step, shift)
+				shift = _snap_to_grid(click_create, canvas*(segments[i][point+1]), grid_step, shift)
 	if point_count > 0:
 		center_mass /= point_count
-		shift = _snap_to_grid(click_create, canvas.xform(center_mass), grid_step, shift)
+		shift = _snap_to_grid(click_create, canvas*(center_mass), grid_step, shift)
 	click_create += shift
 
 func _snap_to_grid(target : Vector2, offset : Vector2, step : Vector2, if_closer : Vector2) -> Vector2:
@@ -823,7 +820,7 @@ func apply_drag() -> void:
 
 func apply_create() -> void:
 	var canvas := get_canvas_transform()
-	var end_point : Vector2 = canvas.affine_inverse().xform(click_create)
+	var end_point : Vector2 = canvas.affine_inverse()*(click_create)
 	var undo_redo := get_undo_redo()
 	match mode:
 		1:
@@ -868,7 +865,7 @@ func apply_create() -> void:
 					newselection[newindex] = {2: true}
 				5:
 					var c : Vector2 = 0.5*(pos+end_point)
-					segments.append([SEGMENT_TYPE.ARC, (end_point-pos).tangent()*0.5+c, c, end_point, end_point])
+					segments.append([SEGMENT_TYPE.ARC, (end_point-pos).orthogonal()*0.5+c, c, end_point, end_point])
 					newselection[newindex] = {3: true}
 		index += 1
 		newindex += 1
@@ -880,7 +877,7 @@ func apply_create() -> void:
 	undo_redo.commit_action()
 
 func reload_snap_settings() -> void:
-	var viewport = get_editor_interface().get_editor_viewport()
+	var viewport = get_editor_interface().get_editor_main_screen()
 	if !viewport || viewport.get_child_count() < 1:
 		return
 	var editor = viewport.get_child(0)
@@ -893,7 +890,7 @@ func reload_snap_settings() -> void:
 	if main_actions_toolbar.get_child_count() < 14:
 		return
 	var snapbutton = main_actions_toolbar.get_child(12)
-	if !(snapbutton is ToolButton):
+	if !(snapbutton is Button):
 		return
 	snap_on = snapbutton.is_pressed()
 	if !snap_on && !snap_first_time:
@@ -905,8 +902,8 @@ func reload_snap_settings() -> void:
 			break
 	if snap_first_time:
 		snap_first_time = false
-		snapbutton.connect("pressed", self, "reload_snap_settings")
-		snapdialog.connect("confirmed", self, "reload_snap_settings")
+		snapbutton.pressed.connect(Callable(self, "reload_snap_settings"))
+		snapdialog.confirmed.connect(Callable(self, "reload_snap_settings"))
 		if !snap_on:
 			return
 	main_actions_toolbar.get_child(13).get_child(0).emit_signal("id_pressed", 11)
@@ -952,17 +949,17 @@ func update_buttons() -> void:
 
 func set_mode(p_mode : int) -> void:
 	mode = p_mode
-	button_select.pressed = (mode == 0)
-	button_start.pressed = (mode == 1)
-	button_line.pressed = (mode == 2)
-	button_quad.pressed = (mode == 3)
-	button_cube.pressed = (mode == 4)
-	button_arc.pressed = (mode == 5)
+	button_select.set_pressed_no_signal(mode == 0)
+	button_start.set_pressed_no_signal(mode == 1)
+	button_line.set_pressed_no_signal(mode == 2)
+	button_quad.set_pressed_no_signal(mode == 3)
+	button_cube.set_pressed_no_signal(mode == 4)
+	button_arc.set_pressed_no_signal(mode == 5)
 
 func delete_selected() -> void:
 	if editing && (!is_instance_valid(editing) || !editing.is_inside_tree()):
 		editing = null
-		update_viewport()
+		update_overlays()
 		update_buttons()
 	if !editing || editing_readonly:
 		return
@@ -990,7 +987,7 @@ func delete_selected() -> void:
 	undo_redo.add_do_method(self, "_update_element_segments", editing, segments, newselection)
 	undo_redo.add_undo_method(self, "_update_element_segments", editing, editing.shape.segments, selection)
 	undo_redo.commit_action()
-	update_viewport()
+	update_overlays()
 	update_buttons()
 
 func _update_element_segments(element : Object, segments : Array, new_selection : Dictionary) -> void:

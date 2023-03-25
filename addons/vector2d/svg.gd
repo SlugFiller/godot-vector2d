@@ -374,34 +374,37 @@ func _init():
 	url_regex.compile("^\\s*"+url_pattern+"\\s*$")
 	paint_regex.compile("^\\s*("+paint_pattern+")\\s*$")
 
-func get_importer_name():
+func _get_importer_name() -> String:
 	return "vector2d.svg"
 
-func get_visible_name():
+func _get_visible_name() -> String:
 	return "Vector2D"
 
-func get_recognized_extensions():
-	return ["svg"]
+func _get_recognized_extensions() -> PackedStringArray:
+	return PackedStringArray(["svg"])
 
-func get_save_extension():
+func _get_save_extension() -> String:
 	return "tscn"
 
-func get_resource_type():
+func _get_resource_type() -> String:
 	return "PackedScene"
 
-func get_preset_count():
+func _get_preset_count() -> int:
 	return 1
 
-func get_preset_name(i):
+func _get_preset_name(_preset: int) -> String:
 	return "Default"
 
-func get_import_options(i):
+func _get_import_options(_path: String, _preset_index: int) -> Array:
 	return []
 
-func get_priority() -> float:
+func _get_priority() -> float:
 	return 2.0
 
-func import(source_file: String, save_path: String, options: Dictionary, platform_variants: Array, gen_files: Array) -> int:
+func _get_import_order() -> int:
+	return IMPORT_ORDER_SCENE
+
+func _import(source_file: String, save_path: String, options: Dictionary, platform_variants: Array, gen_files: Array) -> Error:
 	var xml : XMLParser = XMLParser.new()
 	var err : int = xml.open(source_file)
 	if err != OK:
@@ -421,8 +424,8 @@ func import(source_file: String, save_path: String, options: Dictionary, platfor
 	if err != OK:
 		return err
 
-	var filename = save_path + "." + get_save_extension()
-	return ResourceSaver.save(filename, scene)
+	var filename = save_path + "." + _get_save_extension()
+	return ResourceSaver.save(scene, filename)
 
 func _parse_svg(xml : XMLParser, scene : PackedScene, name : String) -> int:
 	var err : int
@@ -623,7 +626,7 @@ func _parse_polygon(xml : XMLParser, element : ParsedElement, closed : bool) -> 
 
 func _parse_use(xml : XMLParser, element : ParsedElement) -> int:
 	var href : String = xml.get_named_attribute_value_safe("href") if xml.has_attribute("href") else xml.get_named_attribute_value_safe("xlink:href")
-	if href && href.substr(0, 1) == "#":
+	if href != null && href.substr(0, 1) == "#":
 		element.type = 2
 		element.link = href.substr(1)
 	xml.skip_section()
@@ -645,11 +648,11 @@ func _parse_gradient(xml : XMLParser, element : ParsedElement, radial : bool) ->
 		element.gradient_point1 = Vector2(float(xml.get_named_attribute_value_safe("x1")), float(xml.get_named_attribute_value_safe("y1")))
 		element.gradient_point2 = Vector2(float(xml.get_named_attribute_value_safe("x2")), float(xml.get_named_attribute_value_safe("y2")))
 
-	var colors : PoolColorArray = PoolColorArray()
-	var offsets : PoolRealArray = PoolRealArray()
+	var colors : PackedColorArray = PackedColorArray()
+	var offsets : PackedFloat32Array = PackedFloat32Array()
 
 	var href : String = xml.get_named_attribute_value_safe("href") if xml.has_attribute("href") else xml.get_named_attribute_value_safe("xlink:href")
-	if href && href.substr(0, 1) == "#":
+	if href != null && href.substr(0, 1) == "#":
 		element.link = href.substr(1)
 
 	var err : int
@@ -1077,7 +1080,7 @@ func _apply_gradient(elem : Node2D, gradient : ParsedElement, id_map : Dictionar
 	elem.gradient_radius2 = gradient.gradient_radius2
 	elem.gradient_spread_method = gradient.gradient_spread_method
 	elem.gradient_transform = gradient.transform
-	while gradient.link && id_map.has(gradient.link) && id_map[gradient.link].type == gradient.type:
+	while gradient.link != "" && id_map.has(gradient.link) && id_map[gradient.link].type == gradient.type:
 		gradient = id_map[gradient.link]
 	elem.gradient = gradient.gradient
 

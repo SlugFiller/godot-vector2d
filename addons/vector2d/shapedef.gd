@@ -1,8 +1,8 @@
-tool
+@tool
 extends Resource
 class_name Vector2DShapeDefinition
 
-const SEGMENT_TYPE = preload("source.gd").SEGMENT_TYPE
+const SEGMENT_TYPE = Vector2DShapeSource.SEGMENT_TYPE
 var segments : Array
 var segment_regex : RegEx
 
@@ -122,7 +122,7 @@ func _get_property_list() -> Array:
 		index += 1
 	return properties
 
-func _get(property: String):
+func _get(property: StringName):
 	if property == "path":
 		return segments
 	var result : RegExMatch = segment_regex.search(property)
@@ -147,7 +147,7 @@ func _get(property: String):
 			index2 = 4
 	return segments[index1][index2]
 
-func _set(property: String, value) -> bool:
+func _set(property: StringName, value) -> bool:
 	if property == "path":
 		if typeof(value) == TYPE_ARRAY:
 			segments = []

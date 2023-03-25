@@ -8,30 +8,32 @@ uniform vec2 bbox_position;
 uniform vec2 bbox_size;
 uniform bool evenOdd;
 uniform float feather;
-uniform sampler2D segments;
-uniform sampler2D tree;
-uniform sampler2D bboxs;
+uniform sampler2D segments : filter_nearest;
+uniform sampler2D tree : filter_nearest;
+uniform sampler2D bboxs : filter_nearest;
 uniform int paint_type;
 uniform vec2 gradient_point1;
 uniform vec2 gradient_point2;
 uniform float gradient_radius1;
 uniform float gradient_radius2;
 uniform mat4 gradient_transform;
-uniform sampler2D gradient_stops;
-uniform sampler2D gradient_colors;
+uniform sampler2D gradient_stops : filter_nearest;
+uniform sampler2D gradient_colors : filter_linear;
 varying vec2 local_coord;
 varying flat mat4 proj_mat;
 
 void vertex() {
-	vec2 proj_bbox_00 = (EXTRA_MATRIX * (WORLD_MATRIX * vec4(bbox_position, 0.0, 1.0))).xy;
-	vec2 proj_bbox_01 = (EXTRA_MATRIX * (WORLD_MATRIX * vec4(bbox_position+vec2(0.0, bbox_size.y), 0.0, 1.0))).xy;
-	vec2 proj_bbox_10 = (EXTRA_MATRIX * (WORLD_MATRIX * vec4(bbox_position+vec2(bbox_size.x, 0.0), 0.0, 1.0))).xy;
-	vec2 proj_bbox_11 = (EXTRA_MATRIX * (WORLD_MATRIX * vec4(bbox_position+bbox_size, 0.0, 1.0))).xy;
+	mat4 matrix = CANVAS_MATRIX*MODEL_MATRIX;
+	mat4 matrix_inv = inverse(CANVAS_MATRIX);
+	vec2 proj_bbox_00 = (matrix * vec4(bbox_position, 0.0, 1.0)).xy;
+	vec2 proj_bbox_01 = (matrix * vec4(bbox_position+vec2(0.0, bbox_size.y), 0.0, 1.0)).xy;
+	vec2 proj_bbox_10 = (matrix * vec4(bbox_position+vec2(bbox_size.x, 0.0), 0.0, 1.0)).xy;
+	vec2 proj_bbox_11 = (matrix * vec4(bbox_position+bbox_size, 0.0, 1.0)).xy;
 	vec2 proj_bbox_min = min(min(proj_bbox_00, proj_bbox_01), min(proj_bbox_10, proj_bbox_11))-(feather+1.0)*vec2(1.0, 1.0);
 	vec2 proj_bbox_max = max(max(proj_bbox_00, proj_bbox_01), max(proj_bbox_10, proj_bbox_11))+(feather+1.0)*vec2(1.0, 1.0);
-	VERTEX = proj_bbox_min+UV*(proj_bbox_max-proj_bbox_min);
-	local_coord = VERTEX;
-	proj_mat = EXTRA_MATRIX * WORLD_MATRIX;
+	local_coord = proj_bbox_min+UV*(proj_bbox_max-proj_bbox_min);
+	VERTEX = (matrix_inv * vec4(local_coord, 0.0, 1.0)).xy;
+	proj_mat = matrix;
 }
 
 float calculate_distance_linear(vec2 start, vec2 end, float max_distance) {
@@ -202,7 +204,6 @@ void fragment() {
 		vec2 stack[1024];
 		int recurse_ptr;
 		int winding = 0;
-		int j;
 		int node = 0;
 		while (true) {
 			if (checkBBoxWinding(node)) {
@@ -219,7 +220,7 @@ void fragment() {
 							vec2 control = readVecProjected(1, segment);
 							vec2 end = readVecProjected(2, segment);
 							recurse_ptr = 0;
-							for (j = 0; j < MAX_LOOP; j++) {
+							for (int j = 0; j < MAX_LOOP; j++) {
 								int calc_winding = calculate_winding_linear(start, end);
 								int test_winding = calculate_winding_linear(start, control)+calculate_winding_linear(control, end);
 								if (recurse_ptr+3 > MAX_RECURSE || calc_winding == test_winding || distance(start, control)+distance(control, end) < 0.5) {
@@ -250,7 +251,7 @@ void fragment() {
 							vec2 control2 = readVecProjected(2, segment);
 							vec2 end = readVecProjected(3, segment);
 							recurse_ptr = 0;
-							for (j = 0; j < MAX_LOOP; j++) {
+							for (int j = 0; j < MAX_LOOP; j++) {
 								int calc_winding = calculate_winding_linear(start, end);
 								int wind_s1 = calculate_winding_linear(start, control1);
 								int wind_s2 = calculate_winding_linear(start, control2);
@@ -296,7 +297,7 @@ void fragment() {
 							winding += calculate_winding_linear(pstart, center+start.x*radius1+start.y*radius2);
 							winding += calculate_winding_linear(center+end.x*radius1+end.y*radius2, pend);
 							recurse_ptr = 0;
-							for (j = 0; j < MAX_LOOP; j++) {
+							for (int j = 0; j < MAX_LOOP; j++) {
 								vec2 mid = xfirst?vec2(end.x, start.y):vec2(start.x, end.y);
 								vec2 p1 = center+start.x*radius1+start.y*radius2;
 								vec2 p2 = center+mid.x*radius1+mid.y*radius2;
@@ -358,7 +359,7 @@ void fragment() {
 								vec2 control = readVecProjected(1, segment);
 								vec2 end = readVecProjected(2, segment);
 								recurse_ptr = 0;
-								for (j = 0; j < MAX_LOOP; j++) {
+								for (int j = 0; j < MAX_LOOP; j++) {
 									if ((start.x < -d && control.x < -d && end.x < -d) ||
 										(start.y < -d && control.y < -d && end.y < -d) ||
 										(start.x > d && control.x > d && end.x > d) ||
@@ -399,7 +400,7 @@ void fragment() {
 								vec2 control2 = readVecProjected(2, segment);
 								vec2 end = readVecProjected(3, segment);
 								recurse_ptr = 0;
-								for (j = 0; j < MAX_LOOP; j++) {
+								for (int j = 0; j < MAX_LOOP; j++) {
 									if ((start.x < -d && control1.x < -d && control2.x < -d && end.x < -d) ||
 										(start.y < -d && control1.y < -d && control2.y < -d && end.y < -d) ||
 										(start.x > d && control1.x > d && control2.x > d && end.x > d) ||
@@ -450,7 +451,7 @@ void fragment() {
 								d = calculate_distance_linear(pstart, center+start.x*radius1+start.y*radius2, d);
 								d = calculate_distance_linear(center+end.x*radius1+end.y*radius2, pend, d);
 								recurse_ptr = 0;
-								for (j = 0; j < MAX_LOOP; j++) {
+								for (int j = 0; j < MAX_LOOP; j++) {
 									if ((center.x+start.x*radius1.x+start.y*radius2.x < -d && center.x+end.x*radius1.x+start.y*radius2.x < -d && center.x+start.x*radius1.x+end.y*radius2.x < -d && center.x+end.x*radius1.x+end.y*radius2.x < -d) ||
 										(center.y+start.x*radius1.y+start.y*radius2.y < -d && center.y+end.x*radius1.y+start.y*radius2.y < -d && center.y+start.x*radius1.y+end.y*radius2.y < -d && center.y+end.x*radius1.y+end.y*radius2.y < -d) ||
 										(center.x+start.x*radius1.x+start.y*radius2.x > d && center.x+end.x*radius1.x+start.y*radius2.x > d && center.x+start.x*radius1.x+end.y*radius2.x > d && center.x+end.x*radius1.x+end.y*radius2.x > d) ||
@@ -581,15 +582,17 @@ void fragment() {
 			COLOR.b = gradpoint;
 			int stopCount = textureSize(gradient_stops, 0).x;
 			float lastPoint = 0.0;
-			for (j = 0; j < stopCount; j++) {
+			bool found = false;
+			for (int j = 0; j < stopCount; j++) {
 				vec4 t = texelFetch(gradient_stops, ivec2(j, 0), 0);
 				if (gradpoint < t.r) {
 					gradpoint = ((gradpoint-lastPoint)/(t.r-lastPoint)+float(j))/float(stopCount);
+					found = true;
 					break;
 				}
 				lastPoint = t.r;
 			}
-			if (j >= stopCount) {
+			if (!found) {
 				gradpoint = 1.0;
 			}
 			COLOR = texture(gradient_colors, vec2(gradpoint, 0.5));

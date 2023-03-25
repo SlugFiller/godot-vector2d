@@ -1,5 +1,6 @@
-tool
+@tool
 extends Node2D
+class_name Vector2DShapeSource
 
 var dirty : bool = false
 
