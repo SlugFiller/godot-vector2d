@@ -1,6 +1,6 @@
-# Vector graphics plugin for Godot 4
+# Vector graphics plugin for Godot
 
-This is a prototype vector graphics and SVG import plugin written for the [Godot game engine](https://github.com/godotengine/godot). It uses a tracing shader to draw the shapes in real time, without tessellating the shape. Curve winding is calculated for every pixel.
+This is a prototype vector graphics and SVG import plugin written for the [Godot game engine](https://github.com/godotengine/godot). This version relies on [Godot PR 75278](https://github.com/godotengine/godot/pull/75278) being merged. For a version implemented using a shader instead see the [Godot 3](https://github.com/SlugFiller/godot-vector2d/tree/godot-3) or [Godot 4.0](https://github.com/SlugFiller/godot-vector2d/tree/godot-4.0) branches.
 
 Both SVG import and an internal vector shape editor are available as options for creating the shape. Strokes are available using a runtime stroke to fill filter node, and basic linear and radial gradients are implemented in the fill shader.
 
@@ -11,8 +11,6 @@ Copy the `addons` folder to your project. Then go to `Project`->`Project Setting
 Then either import an SVG normally (e.g. via drag and drop), or create a new shape using the `Vector2DShape` and `Vector2DFill` nodes. Note: It is better to first use an SVG as an example for how these nodes work.
 
 # Limitations
-
-While some optimizations are used, calculating winding for every pixel can be particularly slow for shapes made from a large amount of segments.
 
 The vector shape editor is extremely bare bones, and lacks many quality of life features, like automatic smooth handles, box/lasso selection, or scale/rotate for multiple selected points. It also lacks a few necessary basic features.
 
@@ -31,7 +29,7 @@ Due to limitations of Godot's editor, it's not possible to edit multiple shapes 
 - CSS stylesheets are not supported. But inline CSS is. Import of CSS stylesheets would necessarily be lossy (only import computed styles), since Godot can't do CSS resolution at runtime.
 - Dashing strokes is not currently implemented.
 - Pattern fills are not currently implemented.
-- Clip shapes are not currently implemented.
+- Clip shapes are not currently implemented. They can be implemented using Godot's native clip children.
 - Markers are not implemented. It is an extremely niche feature, and the CSS rules involved are quite complex.
 
 # License
